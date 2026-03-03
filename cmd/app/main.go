@@ -7,15 +7,18 @@ import (
 
 	"github.com/ellipse/kernel-lab/internal/domain"
 
-	// "github.com/moby/moby/api/pkg/stdcopy"
-	// "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 )
 
 func main() {
 	lab := domain.Lab{
 		Image: "tinygo/tinygo:0.40.1",
-		// CPULimit: 256,
+		ResourceLimits: &domain.ResourceLimits{
+			CPULimit: 0.5,
+			RAMLimit: 256 * 1024 * 1024,
+		},
 	}
 
 	ctx := context.Background()
@@ -30,4 +33,42 @@ func main() {
 		panic(err)
 	}
 	io.Copy(os.Stdout, reader)
+
+	resp, err := apiClient.ContainerCreate(
+		ctx, client.ContainerCreateOptions{
+			Image: lab.Image,
+			Config: &container.Config{
+				Cmd: []string{"tinygo", "version"},
+			},
+			HostConfig: &container.HostConfig{
+				AutoRemove: true,
+				Resources: container.Resources{
+					NanoCPUs: int64(lab.CPULimit * 1e9),
+					Memory:   lab.RAMLimit,
+				},
+			},
+		})
+	if err != nil {
+		panic(err)
+	}
+
+	if _, err := apiClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
+		panic(err)
+	}
+
+	wait := apiClient.ContainerWait(ctx, resp.ID, client.ContainerWaitOptions{})
+	select {
+	case err := <-wait.Error:
+		if err != nil {
+			panic(err)
+		}
+	case <-wait.Result:
+	}
+
+	out, err := apiClient.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{ShowStdout: true})
+	if err != nil {
+		panic(err)
+	}
+
+	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 }
