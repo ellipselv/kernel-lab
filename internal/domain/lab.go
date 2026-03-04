@@ -17,12 +17,12 @@ type ResourceLimits struct {
 	RAMLimit int64 `json:"ram_limit"`
 }
 
-func (rl *ResourceLimits) ToCore() int64 {
-	return int64(rl.CPULimit * 1e9)
+func (rl *Lab) ToCore() int64 {
+	return int64(rl.Limits.CPULimit * 1e9)
 }
 
-func (rl *ResourceLimits) ToMB() int64 {
-	return rl.RAMLimit * 1024 * 1024
+func (rl *Lab) ToMB() int64 {
+	return rl.Limits.RAMLimit * 1024 * 1024
 }
 
 func NewResourceLimits(cpu float64, ramMB int64) *ResourceLimits {
