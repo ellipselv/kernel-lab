@@ -2,13 +2,10 @@ package main
 
 import (
 	"context"
-	"io"
-	"os"
+	"fmt"
 
 	"github.com/ellipse/kernel-lab/internal/domain"
-	"github.com/moby/moby/api/pkg/stdcopy"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
+	"github.com/ellipse/kernel-lab/internal/infra/docker"
 )
 
 func main() {
@@ -18,53 +15,15 @@ func main() {
 	}
 
 	ctx := context.Background()
-	apiClient, err := client.New(client.FromEnv)
-	if err != nil {
-		panic(err)
-	}
-	defer apiClient.Close()
 
-	reader, err := apiClient.ImagePull(ctx, lab.Image, client.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-	io.Copy(os.Stdout, reader)
-
-	resp, err := apiClient.ContainerCreate(
-		ctx, client.ContainerCreateOptions{
-			Image: lab.Image,
-			Config: &container.Config{
-				Cmd: []string{"sleep", "100"}, // sleep
-			},
-			HostConfig: &container.HostConfig{
-				// AutoRemove: true,
-				Resources: container.Resources{
-					NanoCPUs: lab.ToCore(),
-					Memory:   lab.ToMB(),
-				},
-			},
-		})
+	p, err := docker.NewProvisioner()
 	if err != nil {
 		panic(err)
 	}
 
-	if _, err := apiClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
-		panic(err)
-	}
-
-	wait := apiClient.ContainerWait(ctx, resp.ID, client.ContainerWaitOptions{})
-	select {
-	case err := <-wait.Error:
-		if err != nil {
-			panic(err)
-		}
-	case <-wait.Result:
-	}
-
-	out, err := apiClient.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{ShowStdout: true})
+	containerID, err := p.Spawn(ctx, lab)
 	if err != nil {
 		panic(err)
 	}
-
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	fmt.Println(containerID)
 }
