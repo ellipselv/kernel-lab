@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/ellipse/kernel-lab/internal/domain"
-
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -14,11 +13,8 @@ import (
 
 func main() {
 	lab := domain.Lab{
-		Image: "tinygo/tinygo:0.40.1",
-		ResourceLimits: &domain.ResourceLimits{
-			CPULimit: 0.5,
-			RAMLimit: 256 * 1024 * 1024,
-		},
+		Image:          "tinygo/tinygo:0.40.1",
+		ResourceLimits: domain.NewResourceLimits(0.5, 256),
 	}
 
 	ctx := context.Background()
@@ -43,8 +39,8 @@ func main() {
 			HostConfig: &container.HostConfig{
 				AutoRemove: true,
 				Resources: container.Resources{
-					NanoCPUs: int64(lab.CPULimit * 1e9),
-					Memory:   lab.RAMLimit,
+					NanoCPUs: lab.ToCore(),
+					Memory:   lab.ToMB(),
 				},
 			},
 		})
