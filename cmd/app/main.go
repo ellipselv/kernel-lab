@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ellipse/kernel-lab/internal/domain"
+	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 )
@@ -51,19 +52,19 @@ func main() {
 		panic(err)
 	}
 
-	// wait := apiClient.ContainerWait(ctx, resp.ID, client.ContainerWaitOptions{})
-	// select {
-	// case err := <-wait.Error:
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// case <-wait.Result:
-	// }
+	wait := apiClient.ContainerWait(ctx, resp.ID, client.ContainerWaitOptions{})
+	select {
+	case err := <-wait.Error:
+		if err != nil {
+			panic(err)
+		}
+	case <-wait.Result:
+	}
 
-	// out, err := apiClient.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{ShowStdout: true})
-	// if err != nil {
-	// 	panic(err)
-	// }
+	out, err := apiClient.ContainerLogs(ctx, resp.ID, client.ContainerLogsOptions{ShowStdout: true})
+	if err != nil {
+		panic(err)
+	}
 
-	// stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 }
