@@ -2,10 +2,12 @@ package domain
 
 type Lab struct {
 	// Docker-image (e.g. tinygo/tinygo:0.40.1)
-	Image       string `json:"image"`
-	InitialCode string `json:"initial_code"`
-	MountPath   string `json:"mount_path"`
-	*ResourceLimits
+	Image       string          `json:"image"`
+	InitialCode string          `json:"initial_code"`
+	MountPath   string          `json:"mount_path"`
+	JudgeCode   string          `json:"judge_code"`
+	JudgeType   string          `json:"judge_type"`
+	Limits      *ResourceLimits `json:"limits"`
 }
 
 type ResourceLimits struct {
