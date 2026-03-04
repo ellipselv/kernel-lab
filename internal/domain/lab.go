@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type Lab struct {
 	// Docker-image (e.g. tinygo/tinygo:0.40.1)
 	Image       string          `json:"image"`
@@ -30,4 +32,9 @@ func NewResourceLimits(cpu float64, ramMB int64) *ResourceLimits {
 		CPULimit: cpu,
 		RAMLimit: ramMB,
 	}
+}
+
+type Provisioner interface {
+	Spawn(ctx context.Context, lab Lab) (string, error)
+	Stop(ctx context.Context, id string) error
 }
