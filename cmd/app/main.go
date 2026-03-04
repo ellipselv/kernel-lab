@@ -11,7 +11,7 @@ import (
 func main() {
 	lab := domain.Lab{
 		Image:  "tinygo/tinygo:0.40.1",
-		Limits: domain.NewResourceLimits(0.5, 256),
+		Limits: domain.NewResourceLimits(0.5, 256), // 0.5 CPU, 256MB RAM
 	}
 
 	ctx := context.Background()

@@ -36,7 +36,7 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 			Cmd: []string{"sleep", "100"}, // sleep
 		},
 		HostConfig: &container.HostConfig{
-			// AutoRemove: true,
+			AutoRemove: true,
 			Resources: container.Resources{
 				NanoCPUs: lab.ToCore(),
 				Memory:   lab.ToMB(),
@@ -52,4 +52,8 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 	}
 
 	return resp.ID, nil
+}
+
+func (p *Provisioner) Close() error {
+	return p.api.Close()
 }
