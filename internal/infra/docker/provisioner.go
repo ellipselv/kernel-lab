@@ -37,7 +37,8 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 	resp, err := p.api.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Image: lab.Image,
 		Config: &container.Config{
-			Cmd: []string{"sleep", "100"}, // sleep
+			Cmd: []string{"sh", "-c", "trap : TERM INT; sleep infinity & wait"},
+			Tty: true,
 		},
 		HostConfig: &container.HostConfig{
 			AutoRemove: true,
