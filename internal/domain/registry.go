@@ -25,6 +25,9 @@ func (r *InMemoryRegistry) Register(lab Lab) error {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if _, exists := r.labs[lab.ID]; exists {
+		return fmt.Errorf("lab %q already registered", lab.ID)
+	}
 	r.labs[lab.ID] = lab
 	return nil
 }

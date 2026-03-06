@@ -26,27 +26,9 @@ func main() {
 	}
 	defer p.Close()
 
+	// Registry starts empty.
+	// Labs are registered at runtime via the RegisterLab RPC.
 	registry := domain.NewInMemoryRegistry()
-
-	defaultLab := domain.Lab{
-		ID:    "tinygo-intro",
-		Image: "tinygo/tinygo:0.40.1",
-		InitialCode: `package main
-
-import "fmt"
-
-func main() {
-	fmt.Println("Hello, TinyGo!")
-}
-`,
-		JudgeCode: `cd /tmp && tinygo run solution`,
-		JudgeType: "script",
-		Limits:    domain.NewResourceLimits(0.5, 256),
-	}
-	if err := registry.Register(defaultLab); err != nil {
-		log.Error("failed to register default lab", slog.Any("error", err))
-		os.Exit(1)
-	}
 
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {

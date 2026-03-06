@@ -29,3 +29,25 @@ jobs:
 
       - name: Vet
         run: go vet ./...
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    # Docker is pre-installed on ubuntu-latest; pull alpine once and reuse.
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Pull test image
+        run: docker pull alpine:3.21
+
+      - name: Run integration tests
+        run: go test -tags integration -v -timeout 5m ./internal/transport/grpc/...
