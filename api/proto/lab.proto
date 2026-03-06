@@ -2,22 +2,42 @@ syntax = "proto3";
 
 package lab;
 
-option go_package = "github.com/ellipse/kernel-lab/internal/transport/grpc/pb";
+option go_package = "github.com/ellipse/kernel-lab/api/proto";
 
 service LabService {
+  rpc RegisterLab(RegisterLabRequest) returns (RegisterLabResponse);
+
   rpc StartLab(LabRequest) returns (LabResponse);
-  
+
   rpc StopLab(StopRequest) returns (StopResponse);
+
+  rpc TerminalStream(stream TerminalInput) returns (stream TerminalOutput);
+
+  rpc ExecCheck(ExecRequest) returns (ExecResponse);
+}
+
+message RegisterLabRequest {
+  string lab_id      = 1;
+  string image       = 2;
+  string initial_code = 3;
+  string judge_code  = 4;
+  string judge_type  = 5;
+  double cpu_limit   = 6;
+  int64  ram_limit_mb = 7;
+}
+
+message RegisterLabResponse {
+  bool   success = 1;
+  string lab_id  = 2;
 }
 
 message LabRequest {
-  string image = 1;
-  double cpu_limit = 2;
-  int64 ram_limit_mb = 3;
+  string lab_id = 1;
 }
 
 message LabResponse {
-  string container_id = 1;
+  string container_id  = 1;
+  string initial_code  = 2;
 }
 
 message StopRequest {
@@ -26,4 +46,24 @@ message StopRequest {
 
 message StopResponse {
   bool success = 1;
+}
+
+message TerminalInput {
+  string container_id = 1;
+  bytes  data         = 2;
+}
+
+message TerminalOutput {
+  bytes data = 1;
+}
+
+message ExecRequest {
+  string container_id = 1;
+  string code         = 2;
+}
+
+message ExecResponse {
+  string stdout    = 1;
+  string stderr    = 2;
+  int32  exit_code = 3;
 }
