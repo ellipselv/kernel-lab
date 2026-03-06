@@ -2,8 +2,8 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"os"
 
 	"github.com/ellipse/kernel-lab/internal/domain"
 	"github.com/moby/moby/api/types/container"
@@ -11,7 +11,8 @@ import (
 )
 
 type Provisioner struct {
-	api *client.Client
+	api    *client.Client
+	warmID chan string
 }
 
 func NewProvisioner() (*Provisioner, error) {
@@ -23,12 +24,15 @@ func NewProvisioner() (*Provisioner, error) {
 }
 
 func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error) {
-	reader, err := p.api.ImagePull(ctx, lab.Image, client.ImagePullOptions{})
+	_, err := p.api.ImageInspect(ctx, lab.Image)
 	if err != nil {
-		return "", err
+		reader, err := p.api.ImagePull(ctx, lab.Image, client.ImagePullOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to pull image: %w", err)
+		}
+		defer reader.Close()
+		io.Copy(io.Discard, reader)
 	}
-	defer reader.Close()
-	io.Copy(os.Stdout, reader)
 
 	resp, err := p.api.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Image: lab.Image,

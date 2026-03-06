@@ -20,10 +20,16 @@ type ResourceLimits struct {
 }
 
 func (rl *Lab) ToCore() int64 {
+	if rl.Limits == nil {
+		return 0
+	}
 	return int64(rl.Limits.CPULimit * 1e9)
 }
 
 func (rl *Lab) ToMB() int64 {
+	if rl.Limits == nil {
+		return 0
+	}
 	return rl.Limits.RAMLimit * 1024 * 1024
 }
 
