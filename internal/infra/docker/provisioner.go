@@ -23,6 +23,36 @@ func NewProvisioner() (*Provisioner, error) {
 	return &Provisioner{api: apiClient}, nil
 }
 
+func (p *Provisioner) InitPool(ctx context.Context, lab domain.Lab, size int) {
+	p.warmID = make(chan string, size)
+	for i := 0; i < size; i++ {
+		go func() {
+			id, err := p.Spawn(ctx, lab)
+			if err == nil {
+				p.warmID <- id
+			}
+		}()
+	}
+}
+
+func (p *Provisioner) GetFromPool(ctx context.Context, lab domain.Lab) (string, error) {
+	select {
+	case id := <-p.warmID:
+		go func() {
+			newCtx := context.Background()
+			newID, err := p.Spawn(newCtx, lab)
+			if err == nil {
+				p.warmID <- newID
+			}
+		}()
+		return id, nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+		return p.Spawn(ctx, lab)
+	}
+}
+
 func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error) {
 	_, err := p.api.ImageInspect(ctx, lab.Image)
 	if err != nil {
@@ -57,6 +87,14 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 	}
 
 	return resp.ID, nil
+}
+
+func (p *Provisioner) Stop(ctx context.Context, id string) error {
+	_, err := p.api.ContainerStop(ctx, id, client.ContainerStopOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to stop container %s: %w", id, err)
+	}
+	return nil
 }
 
 func (p *Provisioner) Close() error {
