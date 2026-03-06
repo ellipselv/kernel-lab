@@ -14,8 +14,7 @@ import (
 )
 
 type Provisioner struct {
-	api    *client.Client
-	warmID chan string
+	api *client.Client
 }
 
 func NewProvisioner() (*Provisioner, error) {
@@ -24,35 +23,6 @@ func NewProvisioner() (*Provisioner, error) {
 		return nil, err
 	}
 	return &Provisioner{api: apiClient}, nil
-}
-
-func (p *Provisioner) InitPool(ctx context.Context, lab domain.Lab, size int) {
-	p.warmID = make(chan string, size)
-	for i := 0; i < size; i++ {
-		go func() {
-			id, err := p.Spawn(ctx, lab)
-			if err == nil {
-				p.warmID <- id
-			}
-		}()
-	}
-}
-
-func (p *Provisioner) GetFromPool(ctx context.Context, lab domain.Lab) (string, error) {
-	select {
-	case id := <-p.warmID:
-		go func() {
-			newCtx := context.Background()
-			if newID, err := p.Spawn(newCtx, lab); err == nil {
-				p.warmID <- newID
-			}
-		}()
-		return id, nil
-	case <-ctx.Done():
-		return "", ctx.Err()
-	default:
-		return p.Spawn(ctx, lab)
-	}
 }
 
 func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error) {

@@ -48,7 +48,6 @@ type ExecResult struct {
 
 type Provisioner interface {
 	Spawn(ctx context.Context, lab Lab) (containerID string, err error)
-	GetFromPool(ctx context.Context, lab Lab) (containerID string, err error)
 	Stop(ctx context.Context, id string) error
 	Exec(ctx context.Context, id string, cmd []string) (ExecResult, error)
 	Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, func(), error)

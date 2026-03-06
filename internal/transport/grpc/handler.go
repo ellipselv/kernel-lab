@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	pb "github.com/ellipse/kernel-lab/api/proto"
 	"github.com/ellipse/kernel-lab/internal/domain"
@@ -20,10 +21,12 @@ type LabHandler struct {
 	provisioner   *docker.Provisioner
 	registry      domain.LabRegistry
 	containerLabs sync.Map
+	ttlCancels    sync.Map
+	containerTTL  time.Duration
 }
 
-func NewLabHandler(p *docker.Provisioner, r domain.LabRegistry) *LabHandler {
-	return &LabHandler{provisioner: p, registry: r}
+func NewLabHandler(p *docker.Provisioner, r domain.LabRegistry, ttl time.Duration) *LabHandler {
+	return &LabHandler{provisioner: p, registry: r, containerTTL: ttl}
 }
 
 func (h *LabHandler) RegisterLab(
@@ -53,12 +56,16 @@ func (h *LabHandler) StartLab(
 		return nil, status.Errorf(codes.NotFound, "%v", err)
 	}
 
-	id, err := h.provisioner.GetFromPool(ctx, lab)
+	id, err := h.provisioner.Spawn(ctx, lab)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "provision container: %v", err)
+		return nil, status.Errorf(codes.Internal, "spawn container: %v", err)
 	}
 
 	h.containerLabs.Store(id, lab)
+
+	ttlCtx, ttlCancel := context.WithCancel(context.Background())
+	h.ttlCancels.Store(id, ttlCancel)
+	go h.scheduleCleanup(ttlCtx, id)
 
 	return &pb.LabResponse{
 		ContainerId: id,
@@ -70,12 +77,27 @@ func (h *LabHandler) StopLab(
 	ctx context.Context,
 	req *pb.StopRequest,
 ) (*pb.StopResponse, error) {
+	if v, ok := h.ttlCancels.LoadAndDelete(req.ContainerId); ok {
+		v.(context.CancelFunc)()
+	}
 	if err := h.provisioner.Stop(ctx, req.ContainerId); err != nil {
 		return &pb.StopResponse{Success: false},
 			status.Errorf(codes.Internal, "stop container: %v", err)
 	}
 	h.containerLabs.Delete(req.ContainerId)
 	return &pb.StopResponse{Success: true}, nil
+}
+
+func (h *LabHandler) scheduleCleanup(ctx context.Context, containerID string) {
+	select {
+	case <-time.After(h.containerTTL):
+		log.Printf("TTL expired for container %s — stopping", containerID)
+		_ = h.provisioner.Stop(context.Background(), containerID)
+		h.containerLabs.Delete(containerID)
+		h.ttlCancels.Delete(containerID)
+	case <-ctx.Done():
+		// Explicit StopLab already handled cleanup.
+	}
 }
 
 func (h *LabHandler) TerminalStream(
