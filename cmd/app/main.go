@@ -16,29 +16,49 @@ import (
 func main() {
 	p, err := docker.NewProvisioner()
 	if err != nil {
-		panic(fmt.Sprintf("failed to connect to docker: &v", err))
+		panic(fmt.Sprintf("failed to connect to docker: %v", err))
 	}
 	defer p.Close()
 
+	// ── Lab registry ────────────────────────────────────────────────────────
+	registry := domain.NewInMemoryRegistry()
+
+	// Pre-register the default lab so StartLab("tinygo-intro") works immediately.
 	defaultLab := domain.Lab{
-		Image:  "tinygo/tinygo:0.40.1",
-		Limits: domain.NewResourceLimits(0.5, 256),
+		ID:    "tinygo-intro",
+		Image: "tinygo/tinygo:0.40.1",
+		InitialCode: `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello, TinyGo!")
+}
+`,
+		JudgeCode: `cd /tmp && tinygo run solution`,
+		JudgeType: "script",
+		Limits:    domain.NewResourceLimits(0.5, 256),
+	}
+	if err := registry.Register(defaultLab); err != nil {
+		panic(fmt.Sprintf("failed to register default lab: %v", err))
 	}
 
+	// ── Warm container pool ─────────────────────────────────────────────────
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	fmt.Println("Warming up pool...")
+	fmt.Println("Warming up pool…")
 	p.InitPool(ctx, defaultLab, 5)
 
+	// ── gRPC server ─────────────────────────────────────────────────────────
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		panic(err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterLabServiceServer(s, labGrpc.NewLabHandler(p))
+	pb.RegisterLabServiceServer(s, labGrpc.NewLabHandler(p, registry))
 
-	fmt.Println("Server is running on port 50051...")
+	fmt.Println("Server is running on :50051 …")
 	if err := s.Serve(lis); err != nil {
 		panic(err)
 	}

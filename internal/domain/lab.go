@@ -1,9 +1,12 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 type Lab struct {
-	// Docker-image (e.g. tinygo/tinygo:0.40.1)
+	ID          string          `json:"id"`
 	Image       string          `json:"image"`
 	InitialCode string          `json:"initial_code"`
 	MountPath   string          `json:"mount_path"`
@@ -13,34 +16,40 @@ type Lab struct {
 }
 
 type ResourceLimits struct {
-	// CPULimits 0.5 = half a core, 2.0 = two cores.
+	// CPULimit: 0.5 = half a core, 2.0 = two cores.
 	CPULimit float64 `json:"cpu_limit"`
-	// RAMLimit in mega bytes: 256, 512, etc.
+	// RAMLimit in megabytes: 256, 512, etc.
 	RAMLimit int64 `json:"ram_limit"`
 }
 
-func (rl *Lab) ToCore() int64 {
-	if rl.Limits == nil {
+func (l *Lab) ToCore() int64 {
+	if l.Limits == nil {
 		return 0
 	}
-	return int64(rl.Limits.CPULimit * 1e9)
+	return int64(l.Limits.CPULimit * 1e9)
 }
 
-func (rl *Lab) ToMB() int64 {
-	if rl.Limits == nil {
+func (l *Lab) ToMB() int64 {
+	if l.Limits == nil {
 		return 0
 	}
-	return rl.Limits.RAMLimit * 1024 * 1024
+	return l.Limits.RAMLimit * 1024 * 1024
 }
 
 func NewResourceLimits(cpu float64, ramMB int64) *ResourceLimits {
-	return &ResourceLimits{
-		CPULimit: cpu,
-		RAMLimit: ramMB,
-	}
+	return &ResourceLimits{CPULimit: cpu, RAMLimit: ramMB}
+}
+
+type ExecResult struct {
+	Stdout   string
+	Stderr   string
+	ExitCode int
 }
 
 type Provisioner interface {
-	Spawn(ctx context.Context, lab Lab) (string, error)
+	Spawn(ctx context.Context, lab Lab) (containerID string, err error)
+	GetFromPool(ctx context.Context, lab Lab) (containerID string, err error)
 	Stop(ctx context.Context, id string) error
+	Exec(ctx context.Context, id string, cmd []string) (ExecResult, error)
+	Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, func(), error)
 }

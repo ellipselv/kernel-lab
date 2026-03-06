@@ -4,11 +4,10 @@
 // - protoc             v6.30.2
 // source: api/proto/lab.proto
 
-package pb
+package proto
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,16 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LabService_StartLab_FullMethodName = "/lab.LabService/StartLab"
-	LabService_StopLab_FullMethodName  = "/lab.LabService/StopLab"
+	LabService_RegisterLab_FullMethodName    = "/lab.LabService/RegisterLab"
+	LabService_StartLab_FullMethodName       = "/lab.LabService/StartLab"
+	LabService_StopLab_FullMethodName        = "/lab.LabService/StopLab"
+	LabService_TerminalStream_FullMethodName = "/lab.LabService/TerminalStream"
+	LabService_ExecCheck_FullMethodName      = "/lab.LabService/ExecCheck"
 )
 
 // LabServiceClient is the client API for LabService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LabServiceClient interface {
+	RegisterLab(ctx context.Context, in *RegisterLabRequest, opts ...grpc.CallOption) (*RegisterLabResponse, error)
 	StartLab(ctx context.Context, in *LabRequest, opts ...grpc.CallOption) (*LabResponse, error)
 	StopLab(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
+	TerminalStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TerminalInput, TerminalOutput], error)
+	ExecCheck(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error)
 }
 
 type labServiceClient struct {
@@ -38,6 +43,16 @@ type labServiceClient struct {
 
 func NewLabServiceClient(cc grpc.ClientConnInterface) LabServiceClient {
 	return &labServiceClient{cc}
+}
+
+func (c *labServiceClient) RegisterLab(ctx context.Context, in *RegisterLabRequest, opts ...grpc.CallOption) (*RegisterLabResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterLabResponse)
+	err := c.cc.Invoke(ctx, LabService_RegisterLab_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *labServiceClient) StartLab(ctx context.Context, in *LabRequest, opts ...grpc.CallOption) (*LabResponse, error) {
@@ -60,12 +75,38 @@ func (c *labServiceClient) StopLab(ctx context.Context, in *StopRequest, opts ..
 	return out, nil
 }
 
+func (c *labServiceClient) TerminalStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TerminalInput, TerminalOutput], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &LabService_ServiceDesc.Streams[0], LabService_TerminalStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[TerminalInput, TerminalOutput]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type LabService_TerminalStreamClient = grpc.BidiStreamingClient[TerminalInput, TerminalOutput]
+
+func (c *labServiceClient) ExecCheck(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecResponse)
+	err := c.cc.Invoke(ctx, LabService_ExecCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LabServiceServer is the server API for LabService service.
 // All implementations must embed UnimplementedLabServiceServer
 // for forward compatibility.
 type LabServiceServer interface {
+	RegisterLab(context.Context, *RegisterLabRequest) (*RegisterLabResponse, error)
 	StartLab(context.Context, *LabRequest) (*LabResponse, error)
 	StopLab(context.Context, *StopRequest) (*StopResponse, error)
+	TerminalStream(grpc.BidiStreamingServer[TerminalInput, TerminalOutput]) error
+	ExecCheck(context.Context, *ExecRequest) (*ExecResponse, error)
 	mustEmbedUnimplementedLabServiceServer()
 }
 
@@ -76,11 +117,20 @@ type LabServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLabServiceServer struct{}
 
+func (UnimplementedLabServiceServer) RegisterLab(context.Context, *RegisterLabRequest) (*RegisterLabResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegisterLab not implemented")
+}
 func (UnimplementedLabServiceServer) StartLab(context.Context, *LabRequest) (*LabResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartLab not implemented")
 }
 func (UnimplementedLabServiceServer) StopLab(context.Context, *StopRequest) (*StopResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StopLab not implemented")
+}
+func (UnimplementedLabServiceServer) TerminalStream(grpc.BidiStreamingServer[TerminalInput, TerminalOutput]) error {
+	return status.Error(codes.Unimplemented, "method TerminalStream not implemented")
+}
+func (UnimplementedLabServiceServer) ExecCheck(context.Context, *ExecRequest) (*ExecResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecCheck not implemented")
 }
 func (UnimplementedLabServiceServer) mustEmbedUnimplementedLabServiceServer() {}
 func (UnimplementedLabServiceServer) testEmbeddedByValue()                    {}
@@ -101,6 +151,24 @@ func RegisterLabServiceServer(s grpc.ServiceRegistrar, srv LabServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&LabService_ServiceDesc, srv)
+}
+
+func _LabService_RegisterLab_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterLabRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LabServiceServer).RegisterLab(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LabService_RegisterLab_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LabServiceServer).RegisterLab(ctx, req.(*RegisterLabRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LabService_StartLab_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -139,6 +207,31 @@ func _LabService_StopLab_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LabService_TerminalStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(LabServiceServer).TerminalStream(&grpc.GenericServerStream[TerminalInput, TerminalOutput]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type LabService_TerminalStreamServer = grpc.BidiStreamingServer[TerminalInput, TerminalOutput]
+
+func _LabService_ExecCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LabServiceServer).ExecCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LabService_ExecCheck_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LabServiceServer).ExecCheck(ctx, req.(*ExecRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LabService_ServiceDesc is the grpc.ServiceDesc for LabService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -147,6 +240,10 @@ var LabService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LabServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "RegisterLab",
+			Handler:    _LabService_RegisterLab_Handler,
+		},
+		{
 			MethodName: "StartLab",
 			Handler:    _LabService_StartLab_Handler,
 		},
@@ -154,7 +251,18 @@ var LabService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "StopLab",
 			Handler:    _LabService_StopLab_Handler,
 		},
+		{
+			MethodName: "ExecCheck",
+			Handler:    _LabService_ExecCheck_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "TerminalStream",
+			Handler:       _LabService_TerminalStream_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "api/proto/lab.proto",
 }

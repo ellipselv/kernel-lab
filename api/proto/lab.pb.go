@@ -4,15 +4,14 @@
 // 	protoc        v6.30.2
 // source: api/proto/lab.proto
 
-package pb
+package proto
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -22,18 +21,160 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RegisterLabRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LabId         string                 `protobuf:"bytes,1,opt,name=lab_id,json=labId,proto3" json:"lab_id,omitempty"`
+	Image         string                 `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	InitialCode   string                 `protobuf:"bytes,3,opt,name=initial_code,json=initialCode,proto3" json:"initial_code,omitempty"`
+	JudgeCode     string                 `protobuf:"bytes,4,opt,name=judge_code,json=judgeCode,proto3" json:"judge_code,omitempty"`
+	JudgeType     string                 `protobuf:"bytes,5,opt,name=judge_type,json=judgeType,proto3" json:"judge_type,omitempty"`
+	CpuLimit      float64                `protobuf:"fixed64,6,opt,name=cpu_limit,json=cpuLimit,proto3" json:"cpu_limit,omitempty"`
+	RamLimitMb    int64                  `protobuf:"varint,7,opt,name=ram_limit_mb,json=ramLimitMb,proto3" json:"ram_limit_mb,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterLabRequest) Reset() {
+	*x = RegisterLabRequest{}
+	mi := &file_api_proto_lab_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterLabRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterLabRequest) ProtoMessage() {}
+
+func (x *RegisterLabRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterLabRequest.ProtoReflect.Descriptor instead.
+func (*RegisterLabRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RegisterLabRequest) GetLabId() string {
+	if x != nil {
+		return x.LabId
+	}
+	return ""
+}
+
+func (x *RegisterLabRequest) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+func (x *RegisterLabRequest) GetInitialCode() string {
+	if x != nil {
+		return x.InitialCode
+	}
+	return ""
+}
+
+func (x *RegisterLabRequest) GetJudgeCode() string {
+	if x != nil {
+		return x.JudgeCode
+	}
+	return ""
+}
+
+func (x *RegisterLabRequest) GetJudgeType() string {
+	if x != nil {
+		return x.JudgeType
+	}
+	return ""
+}
+
+func (x *RegisterLabRequest) GetCpuLimit() float64 {
+	if x != nil {
+		return x.CpuLimit
+	}
+	return 0
+}
+
+func (x *RegisterLabRequest) GetRamLimitMb() int64 {
+	if x != nil {
+		return x.RamLimitMb
+	}
+	return 0
+}
+
+type RegisterLabResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	LabId         string                 `protobuf:"bytes,2,opt,name=lab_id,json=labId,proto3" json:"lab_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterLabResponse) Reset() {
+	*x = RegisterLabResponse{}
+	mi := &file_api_proto_lab_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterLabResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterLabResponse) ProtoMessage() {}
+
+func (x *RegisterLabResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterLabResponse.ProtoReflect.Descriptor instead.
+func (*RegisterLabResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RegisterLabResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RegisterLabResponse) GetLabId() string {
+	if x != nil {
+		return x.LabId
+	}
+	return ""
+}
+
 type LabRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Image         string                 `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	CpuLimit      float64                `protobuf:"fixed64,2,opt,name=cpu_limit,json=cpuLimit,proto3" json:"cpu_limit,omitempty"`
-	RamLimitMb    int64                  `protobuf:"varint,3,opt,name=ram_limit_mb,json=ramLimitMb,proto3" json:"ram_limit_mb,omitempty"`
+	LabId         string                 `protobuf:"bytes,1,opt,name=lab_id,json=labId,proto3" json:"lab_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LabRequest) Reset() {
 	*x = LabRequest{}
-	mi := &file_api_proto_lab_proto_msgTypes[0]
+	mi := &file_api_proto_lab_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +186,7 @@ func (x *LabRequest) String() string {
 func (*LabRequest) ProtoMessage() {}
 
 func (x *LabRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_lab_proto_msgTypes[0]
+	mi := &file_api_proto_lab_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,40 +199,27 @@ func (x *LabRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabRequest.ProtoReflect.Descriptor instead.
 func (*LabRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_lab_proto_rawDescGZIP(), []int{0}
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *LabRequest) GetImage() string {
+func (x *LabRequest) GetLabId() string {
 	if x != nil {
-		return x.Image
+		return x.LabId
 	}
 	return ""
-}
-
-func (x *LabRequest) GetCpuLimit() float64 {
-	if x != nil {
-		return x.CpuLimit
-	}
-	return 0
-}
-
-func (x *LabRequest) GetRamLimitMb() int64 {
-	if x != nil {
-		return x.RamLimitMb
-	}
-	return 0
 }
 
 type LabResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	InitialCode   string                 `protobuf:"bytes,2,opt,name=initial_code,json=initialCode,proto3" json:"initial_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LabResponse) Reset() {
 	*x = LabResponse{}
-	mi := &file_api_proto_lab_proto_msgTypes[1]
+	mi := &file_api_proto_lab_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -103,7 +231,7 @@ func (x *LabResponse) String() string {
 func (*LabResponse) ProtoMessage() {}
 
 func (x *LabResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_lab_proto_msgTypes[1]
+	mi := &file_api_proto_lab_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -116,12 +244,19 @@ func (x *LabResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabResponse.ProtoReflect.Descriptor instead.
 func (*LabResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_lab_proto_rawDescGZIP(), []int{1}
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *LabResponse) GetContainerId() string {
 	if x != nil {
 		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *LabResponse) GetInitialCode() string {
+	if x != nil {
+		return x.InitialCode
 	}
 	return ""
 }
@@ -135,7 +270,7 @@ type StopRequest struct {
 
 func (x *StopRequest) Reset() {
 	*x = StopRequest{}
-	mi := &file_api_proto_lab_proto_msgTypes[2]
+	mi := &file_api_proto_lab_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -147,7 +282,7 @@ func (x *StopRequest) String() string {
 func (*StopRequest) ProtoMessage() {}
 
 func (x *StopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_lab_proto_msgTypes[2]
+	mi := &file_api_proto_lab_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -160,7 +295,7 @@ func (x *StopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRequest.ProtoReflect.Descriptor instead.
 func (*StopRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_lab_proto_rawDescGZIP(), []int{2}
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *StopRequest) GetContainerId() string {
@@ -179,7 +314,7 @@ type StopResponse struct {
 
 func (x *StopResponse) Reset() {
 	*x = StopResponse{}
-	mi := &file_api_proto_lab_proto_msgTypes[3]
+	mi := &file_api_proto_lab_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -191,7 +326,7 @@ func (x *StopResponse) String() string {
 func (*StopResponse) ProtoMessage() {}
 
 func (x *StopResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_lab_proto_msgTypes[3]
+	mi := &file_api_proto_lab_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +339,7 @@ func (x *StopResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopResponse.ProtoReflect.Descriptor instead.
 func (*StopResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_lab_proto_rawDescGZIP(), []int{3}
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *StopResponse) GetSuccess() bool {
@@ -214,27 +349,262 @@ func (x *StopResponse) GetSuccess() bool {
 	return false
 }
 
+type TerminalInput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	Data          []byte                 `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalInput) Reset() {
+	*x = TerminalInput{}
+	mi := &file_api_proto_lab_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalInput) ProtoMessage() {}
+
+func (x *TerminalInput) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalInput.ProtoReflect.Descriptor instead.
+func (*TerminalInput) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TerminalInput) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *TerminalInput) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type TerminalOutput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalOutput) Reset() {
+	*x = TerminalOutput{}
+	mi := &file_api_proto_lab_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalOutput) ProtoMessage() {}
+
+func (x *TerminalOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalOutput.ProtoReflect.Descriptor instead.
+func (*TerminalOutput) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TerminalOutput) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type ExecRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecRequest) Reset() {
+	*x = ExecRequest{}
+	mi := &file_api_proto_lab_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecRequest) ProtoMessage() {}
+
+func (x *ExecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecRequest.ProtoReflect.Descriptor instead.
+func (*ExecRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ExecRequest) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *ExecRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type ExecResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stdout        string                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr        string                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	ExitCode      int32                  `protobuf:"varint,3,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecResponse) Reset() {
+	*x = ExecResponse{}
+	mi := &file_api_proto_lab_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecResponse) ProtoMessage() {}
+
+func (x *ExecResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecResponse.ProtoReflect.Descriptor instead.
+func (*ExecResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ExecResponse) GetStdout() string {
+	if x != nil {
+		return x.Stdout
+	}
+	return ""
+}
+
+func (x *ExecResponse) GetStderr() string {
+	if x != nil {
+		return x.Stderr
+	}
+	return ""
+}
+
+func (x *ExecResponse) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
 var File_api_proto_lab_proto protoreflect.FileDescriptor
 
 const file_api_proto_lab_proto_rawDesc = "" +
 	"\n" +
-	"\x13api/proto/lab.proto\x12\x03lab\"a\n" +
+	"\x13api/proto/lab.proto\x12\x03lab\"\xe1\x01\n" +
+	"\x12RegisterLabRequest\x12\x15\n" +
+	"\x06lab_id\x18\x01 \x01(\tR\x05labId\x12\x14\n" +
+	"\x05image\x18\x02 \x01(\tR\x05image\x12!\n" +
+	"\finitial_code\x18\x03 \x01(\tR\vinitialCode\x12\x1d\n" +
 	"\n" +
-	"LabRequest\x12\x14\n" +
-	"\x05image\x18\x01 \x01(\tR\x05image\x12\x1b\n" +
-	"\tcpu_limit\x18\x02 \x01(\x01R\bcpuLimit\x12 \n" +
-	"\fram_limit_mb\x18\x03 \x01(\x03R\n" +
-	"ramLimitMb\"0\n" +
+	"judge_code\x18\x04 \x01(\tR\tjudgeCode\x12\x1d\n" +
+	"\n" +
+	"judge_type\x18\x05 \x01(\tR\tjudgeType\x12\x1b\n" +
+	"\tcpu_limit\x18\x06 \x01(\x01R\bcpuLimit\x12 \n" +
+	"\fram_limit_mb\x18\a \x01(\x03R\n" +
+	"ramLimitMb\"F\n" +
+	"\x13RegisterLabResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x15\n" +
+	"\x06lab_id\x18\x02 \x01(\tR\x05labId\"#\n" +
+	"\n" +
+	"LabRequest\x12\x15\n" +
+	"\x06lab_id\x18\x01 \x01(\tR\x05labId\"S\n" +
 	"\vLabResponse\x12!\n" +
-	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\"0\n" +
+	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12!\n" +
+	"\finitial_code\x18\x02 \x01(\tR\vinitialCode\"0\n" +
 	"\vStopRequest\x12!\n" +
 	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\"(\n" +
 	"\fStopResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2k\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"F\n" +
+	"\rTerminalInput\x12!\n" +
+	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
+	"\x04data\x18\x02 \x01(\fR\x04data\"$\n" +
+	"\x0eTerminalOutput\x12\x12\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"D\n" +
+	"\vExecRequest\x12!\n" +
+	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"[\n" +
+	"\fExecResponse\x12\x16\n" +
+	"\x06stdout\x18\x01 \x01(\tR\x06stdout\x12\x16\n" +
+	"\x06stderr\x18\x02 \x01(\tR\x06stderr\x12\x1b\n" +
+	"\texit_code\x18\x03 \x01(\x05R\bexitCode2\x9e\x02\n" +
 	"\n" +
-	"LabService\x12-\n" +
+	"LabService\x12@\n" +
+	"\vRegisterLab\x12\x17.lab.RegisterLabRequest\x1a\x18.lab.RegisterLabResponse\x12-\n" +
 	"\bStartLab\x12\x0f.lab.LabRequest\x1a\x10.lab.LabResponse\x12.\n" +
-	"\aStopLab\x12\x10.lab.StopRequest\x1a\x11.lab.StopResponseB:Z8github.com/ellipse/kernel-lab/internal/transport/grpc/pbb\x06proto3"
+	"\aStopLab\x12\x10.lab.StopRequest\x1a\x11.lab.StopResponse\x12=\n" +
+	"\x0eTerminalStream\x12\x12.lab.TerminalInput\x1a\x13.lab.TerminalOutput(\x010\x01\x120\n" +
+	"\tExecCheck\x12\x10.lab.ExecRequest\x1a\x11.lab.ExecResponseB)Z'github.com/ellipse/kernel-lab/api/protob\x06proto3"
 
 var (
 	file_api_proto_lab_proto_rawDescOnce sync.Once
@@ -248,20 +618,32 @@ func file_api_proto_lab_proto_rawDescGZIP() []byte {
 	return file_api_proto_lab_proto_rawDescData
 }
 
-var file_api_proto_lab_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_proto_lab_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_api_proto_lab_proto_goTypes = []any{
-	(*LabRequest)(nil),   // 0: lab.LabRequest
-	(*LabResponse)(nil),  // 1: lab.LabResponse
-	(*StopRequest)(nil),  // 2: lab.StopRequest
-	(*StopResponse)(nil), // 3: lab.StopResponse
+	(*RegisterLabRequest)(nil),  // 0: lab.RegisterLabRequest
+	(*RegisterLabResponse)(nil), // 1: lab.RegisterLabResponse
+	(*LabRequest)(nil),          // 2: lab.LabRequest
+	(*LabResponse)(nil),         // 3: lab.LabResponse
+	(*StopRequest)(nil),         // 4: lab.StopRequest
+	(*StopResponse)(nil),        // 5: lab.StopResponse
+	(*TerminalInput)(nil),       // 6: lab.TerminalInput
+	(*TerminalOutput)(nil),      // 7: lab.TerminalOutput
+	(*ExecRequest)(nil),         // 8: lab.ExecRequest
+	(*ExecResponse)(nil),        // 9: lab.ExecResponse
 }
 var file_api_proto_lab_proto_depIdxs = []int32{
-	0, // 0: lab.LabService.StartLab:input_type -> lab.LabRequest
-	2, // 1: lab.LabService.StopLab:input_type -> lab.StopRequest
-	1, // 2: lab.LabService.StartLab:output_type -> lab.LabResponse
-	3, // 3: lab.LabService.StopLab:output_type -> lab.StopResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	0, // 0: lab.LabService.RegisterLab:input_type -> lab.RegisterLabRequest
+	2, // 1: lab.LabService.StartLab:input_type -> lab.LabRequest
+	4, // 2: lab.LabService.StopLab:input_type -> lab.StopRequest
+	6, // 3: lab.LabService.TerminalStream:input_type -> lab.TerminalInput
+	8, // 4: lab.LabService.ExecCheck:input_type -> lab.ExecRequest
+	1, // 5: lab.LabService.RegisterLab:output_type -> lab.RegisterLabResponse
+	3, // 6: lab.LabService.StartLab:output_type -> lab.LabResponse
+	5, // 7: lab.LabService.StopLab:output_type -> lab.StopResponse
+	7, // 8: lab.LabService.TerminalStream:output_type -> lab.TerminalOutput
+	9, // 9: lab.LabService.ExecCheck:output_type -> lab.ExecResponse
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -278,7 +660,7 @@ func file_api_proto_lab_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_lab_proto_rawDesc), len(file_api_proto_lab_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
