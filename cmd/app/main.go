@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
 	"net"
+	"os"
 	"time"
 
 	pb "github.com/ellipse/kernel-lab/api/proto"
@@ -13,9 +14,15 @@ import (
 )
 
 func main() {
-	p, err := docker.NewProvisioner()
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(log)
+
+	p, err := docker.NewProvisioner(log)
 	if err != nil {
-		panic(fmt.Sprintf("failed to connect to docker: %v", err))
+		log.Error("failed to connect to docker", slog.Any("error", err))
+		os.Exit(1)
 	}
 	defer p.Close()
 
@@ -37,19 +44,22 @@ func main() {
 		Limits:    domain.NewResourceLimits(0.5, 256),
 	}
 	if err := registry.Register(defaultLab); err != nil {
-		panic(fmt.Sprintf("failed to register default lab: %v", err))
+		log.Error("failed to register default lab", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		panic(err)
+		log.Error("failed to listen", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterLabServiceServer(s, labGrpc.NewLabHandler(p, registry, 30*time.Minute))
+	pb.RegisterLabServiceServer(s, labGrpc.NewLabHandler(p, registry, 30*time.Minute, log))
 
-	fmt.Println("Server is running on :50051 …")
+	log.Info("server listening", slog.String("addr", ":50051"))
 	if err := s.Serve(lis); err != nil {
-		panic(err)
+		log.Error("server stopped", slog.Any("error", err))
+		os.Exit(1)
 	}
 }

@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log/slog"
+	"time"
 
 	"github.com/ellipse/kernel-lab/internal/domain"
 	"github.com/moby/moby/api/types/container"
@@ -15,26 +17,39 @@ import (
 
 type Provisioner struct {
 	api *client.Client
+	log *slog.Logger
 }
 
-func NewProvisioner() (*Provisioner, error) {
+func NewProvisioner(log *slog.Logger) (*Provisioner, error) {
 	apiClient, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
-	return &Provisioner{api: apiClient}, nil
+	return &Provisioner{api: apiClient, log: log}, nil
 }
 
+// Spawn pulls the image (if not already present) then creates and starts a
+// container. Because the image is cached on subsequent calls this takes
+// roughly 200–500 ms.
 func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error) {
 	if _, err := p.api.ImageInspect(ctx, lab.Image); err != nil {
+		p.log.InfoContext(ctx, "image not found locally, pulling", slog.String("image", lab.Image))
+		start := time.Now()
 		reader, err := p.api.ImagePull(ctx, lab.Image, client.ImagePullOptions{})
 		if err != nil {
 			return "", fmt.Errorf("failed to pull image %q: %w", lab.Image, err)
 		}
 		defer reader.Close()
 		io.Copy(io.Discard, reader)
+		p.log.InfoContext(ctx, "image pulled",
+			slog.String("image", lab.Image),
+			slog.Duration("took", time.Since(start)),
+		)
+	} else {
+		p.log.DebugContext(ctx, "image already present, skipping pull", slog.String("image", lab.Image))
 	}
 
+	start := time.Now()
 	resp, err := p.api.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Image: lab.Image,
 		Config: &container.Config{
@@ -56,17 +71,34 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 	if _, err := p.api.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
 		return "", err
 	}
+	p.log.InfoContext(ctx, "container started",
+		slog.String("container_id", resp.ID),
+		slog.String("lab_id", lab.ID),
+		slog.String("image", lab.Image),
+		slog.Duration("took", time.Since(start)),
+	)
 	return resp.ID, nil
 }
 
 func (p *Provisioner) Stop(ctx context.Context, id string) error {
+	p.log.InfoContext(ctx, "stopping container", slog.String("container_id", id))
 	if _, err := p.api.ContainerStop(ctx, id, client.ContainerStopOptions{}); err != nil {
+		p.log.ErrorContext(ctx, "failed to stop container",
+			slog.String("container_id", id),
+			slog.Any("error", err),
+		)
 		return fmt.Errorf("failed to stop container %s: %w", id, err)
 	}
+	p.log.InfoContext(ctx, "container stopped", slog.String("container_id", id))
 	return nil
 }
 
 func (p *Provisioner) Exec(ctx context.Context, id string, cmd []string) (domain.ExecResult, error) {
+	p.log.DebugContext(ctx, "exec start",
+		slog.String("container_id", id),
+		slog.Any("cmd", cmd),
+	)
+	start := time.Now()
 	created, err := p.api.ExecCreate(ctx, id, client.ExecCreateOptions{
 		Cmd:          cmd,
 		AttachStdout: true,
@@ -93,14 +125,25 @@ func (p *Provisioner) Exec(ctx context.Context, id string, cmd []string) (domain
 		return domain.ExecResult{}, fmt.Errorf("exec inspect: %w", err)
 	}
 
-	return domain.ExecResult{
+	res := domain.ExecResult{
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 		ExitCode: insp.ExitCode,
-	}, nil
+	}
+	p.execDone(ctx, id, res, time.Since(start))
+	return res, nil
+}
+
+func (p *Provisioner) execDone(ctx context.Context, id string, res domain.ExecResult, took time.Duration) {
+	p.log.InfoContext(ctx, "exec done",
+		slog.String("container_id", id),
+		slog.Int("exit_code", res.ExitCode),
+		slog.Duration("took", took),
+	)
 }
 
 func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, func(), error) {
+	p.log.DebugContext(ctx, "attaching PTY", slog.String("container_id", id))
 	created, err := p.api.ExecCreate(ctx, id, client.ExecCreateOptions{
 		Cmd:          []string{"/bin/sh"},
 		AttachStdin:  true,
@@ -116,6 +159,7 @@ func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("attach exec attach: %w", err)
 	}
+	p.log.InfoContext(ctx, "PTY attached", slog.String("container_id", id))
 	return ar.Conn, ar.Reader, ar.Close, nil
 }
 
