@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package lab;
+
+option go_package = "github.com/ellipse/kernel-lab/internal/transport/grpc/pb";
+
+service LabService {
+  rpc StartLab(LabRequest) returns (LabResponse);
+  
+  rpc StopLab(StopRequest) returns (StopResponse);
+}
+
+message LabRequest {
+  string image = 1;
+  double cpu_limit = 2;
+  int64 ram_limit_mb = 3;
+}
+
+message LabResponse {
+  string container_id = 1;
+}
+
+message StopRequest {
+  string container_id = 1;
+}
+
+message StopResponse {
+  bool success = 1;
+}
