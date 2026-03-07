@@ -446,11 +446,12 @@ func (x *TerminalOutput) GetData() []byte {
 }
 
 type ExecRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ContainerId    string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	Code           string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	TimeoutSeconds int32                  `protobuf:"varint,3,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"` // 0 means default (30s)
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ExecRequest) Reset() {
@@ -495,6 +496,13 @@ func (x *ExecRequest) GetCode() string {
 		return x.Code
 	}
 	return ""
+}
+
+func (x *ExecRequest) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
 }
 
 type ExecResponse struct {
@@ -557,6 +565,126 @@ func (x *ExecResponse) GetExitCode() int32 {
 	return 0
 }
 
+type UploadFileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	DestPath      string                 `protobuf:"bytes,2,opt,name=dest_path,json=destPath,proto3" json:"dest_path,omitempty"` // e.g., "/tmp"
+	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`                 // e.g., "solution"
+	Content       []byte                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadFileRequest) Reset() {
+	*x = UploadFileRequest{}
+	mi := &file_api_proto_lab_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadFileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadFileRequest) ProtoMessage() {}
+
+func (x *UploadFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadFileRequest.ProtoReflect.Descriptor instead.
+func (*UploadFileRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UploadFileRequest) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *UploadFileRequest) GetDestPath() string {
+	if x != nil {
+		return x.DestPath
+	}
+	return ""
+}
+
+func (x *UploadFileRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *UploadFileRequest) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+type UploadFileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMsg      string                 `protobuf:"bytes,2,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadFileResponse) Reset() {
+	*x = UploadFileResponse{}
+	mi := &file_api_proto_lab_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadFileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadFileResponse) ProtoMessage() {}
+
+func (x *UploadFileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadFileResponse.ProtoReflect.Descriptor instead.
+func (*UploadFileResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UploadFileResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *UploadFileResponse) GetErrorMsg() string {
+	if x != nil {
+		return x.ErrorMsg
+	}
+	return ""
+}
+
 var File_api_proto_lab_proto protoreflect.FileDescriptor
 
 const file_api_proto_lab_proto_rawDesc = "" +
@@ -590,21 +718,32 @@ const file_api_proto_lab_proto_rawDesc = "" +
 	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
 	"\x04data\x18\x02 \x01(\fR\x04data\"$\n" +
 	"\x0eTerminalOutput\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data\"D\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"m\n" +
 	"\vExecRequest\x12!\n" +
 	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\"[\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12'\n" +
+	"\x0ftimeout_seconds\x18\x03 \x01(\x05R\x0etimeoutSeconds\"[\n" +
 	"\fExecResponse\x12\x16\n" +
 	"\x06stdout\x18\x01 \x01(\tR\x06stdout\x12\x16\n" +
 	"\x06stderr\x18\x02 \x01(\tR\x06stderr\x12\x1b\n" +
-	"\texit_code\x18\x03 \x01(\x05R\bexitCode2\x9e\x02\n" +
+	"\texit_code\x18\x03 \x01(\x05R\bexitCode\"\x89\x01\n" +
+	"\x11UploadFileRequest\x12!\n" +
+	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x1b\n" +
+	"\tdest_path\x18\x02 \x01(\tR\bdestPath\x12\x1a\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\x12\x18\n" +
+	"\acontent\x18\x04 \x01(\fR\acontent\"K\n" +
+	"\x12UploadFileResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1b\n" +
+	"\terror_msg\x18\x02 \x01(\tR\berrorMsg2\xdd\x02\n" +
 	"\n" +
 	"LabService\x12@\n" +
 	"\vRegisterLab\x12\x17.lab.RegisterLabRequest\x1a\x18.lab.RegisterLabResponse\x12-\n" +
 	"\bStartLab\x12\x0f.lab.LabRequest\x1a\x10.lab.LabResponse\x12.\n" +
 	"\aStopLab\x12\x10.lab.StopRequest\x1a\x11.lab.StopResponse\x12=\n" +
 	"\x0eTerminalStream\x12\x12.lab.TerminalInput\x1a\x13.lab.TerminalOutput(\x010\x01\x120\n" +
-	"\tExecCheck\x12\x10.lab.ExecRequest\x1a\x11.lab.ExecResponseB)Z'github.com/ellipse/kernel-lab/api/protob\x06proto3"
+	"\tExecCheck\x12\x10.lab.ExecRequest\x1a\x11.lab.ExecResponse\x12=\n" +
+	"\n" +
+	"UploadFile\x12\x16.lab.UploadFileRequest\x1a\x17.lab.UploadFileResponseB)Z'github.com/ellipse/kernel-lab/api/protob\x06proto3"
 
 var (
 	file_api_proto_lab_proto_rawDescOnce sync.Once
@@ -618,7 +757,7 @@ func file_api_proto_lab_proto_rawDescGZIP() []byte {
 	return file_api_proto_lab_proto_rawDescData
 }
 
-var file_api_proto_lab_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_api_proto_lab_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_api_proto_lab_proto_goTypes = []any{
 	(*RegisterLabRequest)(nil),  // 0: lab.RegisterLabRequest
 	(*RegisterLabResponse)(nil), // 1: lab.RegisterLabResponse
@@ -630,23 +769,27 @@ var file_api_proto_lab_proto_goTypes = []any{
 	(*TerminalOutput)(nil),      // 7: lab.TerminalOutput
 	(*ExecRequest)(nil),         // 8: lab.ExecRequest
 	(*ExecResponse)(nil),        // 9: lab.ExecResponse
+	(*UploadFileRequest)(nil),   // 10: lab.UploadFileRequest
+	(*UploadFileResponse)(nil),  // 11: lab.UploadFileResponse
 }
 var file_api_proto_lab_proto_depIdxs = []int32{
-	0, // 0: lab.LabService.RegisterLab:input_type -> lab.RegisterLabRequest
-	2, // 1: lab.LabService.StartLab:input_type -> lab.LabRequest
-	4, // 2: lab.LabService.StopLab:input_type -> lab.StopRequest
-	6, // 3: lab.LabService.TerminalStream:input_type -> lab.TerminalInput
-	8, // 4: lab.LabService.ExecCheck:input_type -> lab.ExecRequest
-	1, // 5: lab.LabService.RegisterLab:output_type -> lab.RegisterLabResponse
-	3, // 6: lab.LabService.StartLab:output_type -> lab.LabResponse
-	5, // 7: lab.LabService.StopLab:output_type -> lab.StopResponse
-	7, // 8: lab.LabService.TerminalStream:output_type -> lab.TerminalOutput
-	9, // 9: lab.LabService.ExecCheck:output_type -> lab.ExecResponse
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0,  // 0: lab.LabService.RegisterLab:input_type -> lab.RegisterLabRequest
+	2,  // 1: lab.LabService.StartLab:input_type -> lab.LabRequest
+	4,  // 2: lab.LabService.StopLab:input_type -> lab.StopRequest
+	6,  // 3: lab.LabService.TerminalStream:input_type -> lab.TerminalInput
+	8,  // 4: lab.LabService.ExecCheck:input_type -> lab.ExecRequest
+	10, // 5: lab.LabService.UploadFile:input_type -> lab.UploadFileRequest
+	1,  // 6: lab.LabService.RegisterLab:output_type -> lab.RegisterLabResponse
+	3,  // 7: lab.LabService.StartLab:output_type -> lab.LabResponse
+	5,  // 8: lab.LabService.StopLab:output_type -> lab.StopResponse
+	7,  // 9: lab.LabService.TerminalStream:output_type -> lab.TerminalOutput
+	9,  // 10: lab.LabService.ExecCheck:output_type -> lab.ExecResponse
+	11, // 11: lab.LabService.UploadFile:output_type -> lab.UploadFileResponse
+	6,  // [6:12] is the sub-list for method output_type
+	0,  // [0:6] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_lab_proto_init() }
@@ -660,7 +803,7 @@ func file_api_proto_lab_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_lab_proto_rawDesc), len(file_api_proto_lab_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

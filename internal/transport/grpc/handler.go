@@ -115,7 +115,6 @@ func (h *LabHandler) scheduleCleanup(ctx context.Context, containerID string) {
 		h.containerLabs.Delete(containerID)
 		h.ttlCancels.Delete(containerID)
 	case <-ctx.Done():
-		// Explicit StopLab already handled cleanup.
 	}
 }
 
@@ -213,8 +212,24 @@ func (h *LabHandler) ExecCheck(
 		judgeCmd = "sh /tmp/solution"
 	}
 
-	result, err := h.provisioner.Exec(ctx, req.ContainerId, []string{"sh", "-c", judgeCmd})
+	execCtx := ctx
+	timeoutSecs := int64(30)
+	if req.TimeoutSeconds > 0 {
+		timeoutSecs = int64(req.TimeoutSeconds)
+	}
+	var cancel context.CancelFunc
+	execCtx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSecs)*time.Second)
+	defer cancel()
+
+	result, err := h.provisioner.Exec(execCtx, req.ContainerId, []string{"sh", "-c", judgeCmd})
 	if err != nil {
+		if execCtx.Err() == context.DeadlineExceeded {
+			return &pb.ExecResponse{
+				Stdout:   result.Stdout,
+				Stderr:   "execution timed out after " + fmt.Sprintf("%d", timeoutSecs) + " seconds",
+				ExitCode: 124,
+			}, nil
+		}
 		return nil, status.Errorf(codes.Internal, "exec check: %v", err)
 	}
 
@@ -227,5 +242,43 @@ func (h *LabHandler) ExecCheck(
 		Stdout:   result.Stdout,
 		Stderr:   result.Stderr,
 		ExitCode: int32(result.ExitCode),
+	}, nil
+}
+
+func (h *LabHandler) UploadFile(
+	ctx context.Context,
+	req *pb.UploadFileRequest,
+) (*pb.UploadFileResponse, error) {
+	h.log.InfoContext(ctx, "UploadFile requested",
+		slog.String("container_id", req.ContainerId),
+		slog.String("dest_path", req.DestPath),
+		slog.String("filename", req.Filename),
+	)
+
+	if _, ok := h.containerLabs.Load(req.ContainerId); !ok {
+		return &pb.UploadFileResponse{
+			Success:  false,
+			ErrorMsg: fmt.Sprintf("container %q not found", req.ContainerId),
+		}, nil
+	}
+
+	if err := h.provisioner.UploadFile(ctx, req.ContainerId, req.DestPath, req.Filename, req.Content); err != nil {
+		h.log.ErrorContext(ctx, "upload file failed",
+			slog.String("container_id", req.ContainerId),
+			slog.Any("error", err),
+		)
+		return &pb.UploadFileResponse{
+			Success:  false,
+			ErrorMsg: err.Error(),
+		}, nil
+	}
+
+	h.log.InfoContext(ctx, "file uploaded successfully",
+		slog.String("container_id", req.ContainerId),
+		slog.String("filename", req.Filename),
+	)
+	return &pb.UploadFileResponse{
+		Success:  true,
+		ErrorMsg: "",
 	}, nil
 }

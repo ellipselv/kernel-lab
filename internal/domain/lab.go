@@ -16,10 +16,8 @@ type Lab struct {
 }
 
 type ResourceLimits struct {
-	// CPULimit: 0.5 = half a core, 2.0 = two cores.
 	CPULimit float64 `json:"cpu_limit"`
-	// RAMLimit in megabytes: 256, 512, etc.
-	RAMLimit int64 `json:"ram_limit"`
+	RAMLimit int64   `json:"ram_limit"`
 }
 
 func (l *Lab) ToCore() int64 {
@@ -51,4 +49,5 @@ type Provisioner interface {
 	Stop(ctx context.Context, id string) error
 	Exec(ctx context.Context, id string, cmd []string) (ExecResult, error)
 	Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, func(), error)
+	UploadFile(ctx context.Context, containerID, destPath, filename string, content []byte) error
 }

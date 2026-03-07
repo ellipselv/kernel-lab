@@ -26,8 +26,6 @@ func main() {
 	}
 	defer p.Close()
 
-	// Registry starts empty.
-	// Labs are registered at runtime via the RegisterLab RPC.
 	registry := domain.NewInMemoryRegistry()
 
 	lis, err := net.Listen("tcp", ":50051")

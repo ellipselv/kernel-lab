@@ -24,6 +24,7 @@ const (
 	LabService_StopLab_FullMethodName        = "/lab.LabService/StopLab"
 	LabService_TerminalStream_FullMethodName = "/lab.LabService/TerminalStream"
 	LabService_ExecCheck_FullMethodName      = "/lab.LabService/ExecCheck"
+	LabService_UploadFile_FullMethodName     = "/lab.LabService/UploadFile"
 )
 
 // LabServiceClient is the client API for LabService service.
@@ -35,6 +36,7 @@ type LabServiceClient interface {
 	StopLab(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 	TerminalStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TerminalInput, TerminalOutput], error)
 	ExecCheck(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error)
+	UploadFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error)
 }
 
 type labServiceClient struct {
@@ -98,6 +100,16 @@ func (c *labServiceClient) ExecCheck(ctx context.Context, in *ExecRequest, opts 
 	return out, nil
 }
 
+func (c *labServiceClient) UploadFile(ctx context.Context, in *UploadFileRequest, opts ...grpc.CallOption) (*UploadFileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadFileResponse)
+	err := c.cc.Invoke(ctx, LabService_UploadFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LabServiceServer is the server API for LabService service.
 // All implementations must embed UnimplementedLabServiceServer
 // for forward compatibility.
@@ -107,6 +119,7 @@ type LabServiceServer interface {
 	StopLab(context.Context, *StopRequest) (*StopResponse, error)
 	TerminalStream(grpc.BidiStreamingServer[TerminalInput, TerminalOutput]) error
 	ExecCheck(context.Context, *ExecRequest) (*ExecResponse, error)
+	UploadFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error)
 	mustEmbedUnimplementedLabServiceServer()
 }
 
@@ -131,6 +144,9 @@ func (UnimplementedLabServiceServer) TerminalStream(grpc.BidiStreamingServer[Ter
 }
 func (UnimplementedLabServiceServer) ExecCheck(context.Context, *ExecRequest) (*ExecResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ExecCheck not implemented")
+}
+func (UnimplementedLabServiceServer) UploadFile(context.Context, *UploadFileRequest) (*UploadFileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadFile not implemented")
 }
 func (UnimplementedLabServiceServer) mustEmbedUnimplementedLabServiceServer() {}
 func (UnimplementedLabServiceServer) testEmbeddedByValue()                    {}
@@ -232,6 +248,24 @@ func _LabService_ExecCheck_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LabService_UploadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LabServiceServer).UploadFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LabService_UploadFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LabServiceServer).UploadFile(ctx, req.(*UploadFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LabService_ServiceDesc is the grpc.ServiceDesc for LabService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -254,6 +288,10 @@ var LabService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ExecCheck",
 			Handler:    _LabService_ExecCheck_Handler,
+		},
+		{
+			MethodName: "UploadFile",
+			Handler:    _LabService_UploadFile_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

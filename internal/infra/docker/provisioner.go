@@ -28,9 +28,6 @@ func NewProvisioner(log *slog.Logger) (*Provisioner, error) {
 	return &Provisioner{api: apiClient, log: log}, nil
 }
 
-// Spawn pulls the image (if not already present) then creates and starts a
-// container. Because the image is cached on subsequent calls this takes
-// roughly 200–500 ms.
 func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error) {
 	if _, err := p.api.ImageInspect(ctx, lab.Image); err != nil {
 		p.log.InfoContext(ctx, "image not found locally, pulling", slog.String("image", lab.Image))
@@ -161,6 +158,26 @@ func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io
 	}
 	p.log.InfoContext(ctx, "PTY attached", slog.String("container_id", id))
 	return ar.Conn, ar.Reader, ar.Close, nil
+}
+
+func (p *Provisioner) UploadFile(ctx context.Context, containerID, destPath, filename string, content []byte) error {
+	p.log.DebugContext(ctx, "uploading file to container",
+		slog.String("container_id", containerID),
+		slog.String("dest_path", destPath),
+		slog.String("filename", filename),
+		slog.Int("size", len(content)),
+	)
+
+	if err := p.CopyToContainer(ctx, containerID, destPath, filename, content); err != nil {
+		return fmt.Errorf("upload file: %w", err)
+	}
+
+	p.log.DebugContext(ctx, "file uploaded successfully",
+		slog.String("container_id", containerID),
+		slog.String("dest_path", destPath),
+		slog.String("filename", filename),
+	)
+	return nil
 }
 
 func (p *Provisioner) CopyToContainer(

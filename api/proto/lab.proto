@@ -14,6 +14,8 @@ service LabService {
   rpc TerminalStream(stream TerminalInput) returns (stream TerminalOutput);
 
   rpc ExecCheck(ExecRequest) returns (ExecResponse);
+
+  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse);
 }
 
 message RegisterLabRequest {
@@ -60,10 +62,23 @@ message TerminalOutput {
 message ExecRequest {
   string container_id = 1;
   string code         = 2;
+  int32  timeout_seconds = 3;
 }
 
 message ExecResponse {
   string stdout    = 1;
   string stderr    = 2;
   int32  exit_code = 3;
+}
+
+message UploadFileRequest {
+  string container_id = 1;
+  string dest_path    = 2;
+  string filename     = 3;
+  bytes  content      = 4;
+}
+
+message UploadFileResponse {
+  bool   success   = 1;
+  string error_msg = 2;
 }
