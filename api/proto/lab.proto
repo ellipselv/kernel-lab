@@ -4,18 +4,44 @@ package lab;
 
 option go_package = "github.com/ellipse/kernel-lab/api/proto";
 
+import "google/api/annotations.proto";
+
 service LabService {
-  rpc RegisterLab(RegisterLabRequest) returns (RegisterLabResponse);
+  rpc RegisterLab(RegisterLabRequest) returns (RegisterLabResponse) {
+    option (google.api.http) = {
+      post: "/v1/labs"
+      body: "*"
+    };
+  }
 
-  rpc StartLab(LabRequest) returns (LabResponse);
+  rpc StartLab(LabRequest) returns (LabResponse) {
+    option (google.api.http) = {
+      post: "/v1/labs/{lab_id}/start"
+      body: "*"
+    };
+  }
 
-  rpc StopLab(StopRequest) returns (StopResponse);
+  rpc StopLab(StopRequest) returns (StopResponse) {
+    option (google.api.http) = {
+      delete: "/v1/containers/{container_id}"
+    };
+  }
 
   rpc TerminalStream(stream TerminalInput) returns (stream TerminalOutput);
 
-  rpc ExecCheck(ExecRequest) returns (ExecResponse);
+  rpc ExecCheck(ExecRequest) returns (ExecResponse) {
+    option (google.api.http) = {
+      post: "/v1/containers/{container_id}/check"
+      body: "*"
+    };
+  }
 
-  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse);
+  rpc UploadFile(UploadFileRequest) returns (UploadFileResponse) {
+    option (google.api.http) = {
+      post: "/v1/containers/{container_id}/files"
+      body: "*"
+    };
+  }
 
   rpc ExtendLab(ExtendLabRequest) returns (ExtendLabResponse);
 }

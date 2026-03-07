@@ -1,0 +1,8 @@
+version: v2
+
+modules:
+  - path: .
+    name: buf.build/ellipse/kernel-lab
+
+deps:
+  - buf.build/googleapis/googleapis

@@ -1,0 +1,345 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/proto/lab.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "LabService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/containers/{containerId}": {
+      "delete": {
+        "operationId": "LabService_StopLab",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/labStopResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "containerId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LabService"
+        ]
+      }
+    },
+    "/v1/containers/{containerId}/check": {
+      "post": {
+        "operationId": "LabService_ExecCheck",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/labExecResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "containerId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LabServiceExecCheckBody"
+            }
+          }
+        ],
+        "tags": [
+          "LabService"
+        ]
+      }
+    },
+    "/v1/containers/{containerId}/files": {
+      "post": {
+        "operationId": "LabService_UploadFile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/labUploadFileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "containerId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LabServiceUploadFileBody"
+            }
+          }
+        ],
+        "tags": [
+          "LabService"
+        ]
+      }
+    },
+    "/v1/labs": {
+      "post": {
+        "operationId": "LabService_RegisterLab",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/labRegisterLabResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/labRegisterLabRequest"
+            }
+          }
+        ],
+        "tags": [
+          "LabService"
+        ]
+      }
+    },
+    "/v1/labs/{labId}/start": {
+      "post": {
+        "operationId": "LabService_StartLab",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/labLabResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "labId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LabServiceStartLabBody"
+            }
+          }
+        ],
+        "tags": [
+          "LabService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "LabServiceExecCheckBody": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "LabServiceStartLabBody": {
+      "type": "object"
+    },
+    "LabServiceUploadFileBody": {
+      "type": "object",
+      "properties": {
+        "destPath": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "labExecResponse": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "exitCode": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "labLabResponse": {
+      "type": "object",
+      "properties": {
+        "containerId": {
+          "type": "string"
+        },
+        "initialCode": {
+          "type": "string"
+        }
+      }
+    },
+    "labRegisterLabRequest": {
+      "type": "object",
+      "properties": {
+        "labId": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "initialCode": {
+          "type": "string"
+        },
+        "judgeCode": {
+          "type": "string"
+        },
+        "judgeType": {
+          "type": "string"
+        },
+        "cpuLimit": {
+          "type": "number",
+          "format": "double"
+        },
+        "ramLimitMb": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationSeconds": {
+          "type": "string",
+          "format": "int64",
+          "title": "0 means use default (30 min)"
+        }
+      }
+    },
+    "labRegisterLabResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "labId": {
+          "type": "string"
+        }
+      }
+    },
+    "labStopResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "labUploadFileResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "errorMsg": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
