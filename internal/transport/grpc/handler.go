@@ -18,12 +18,14 @@ import (
 
 type LabHandler struct {
 	pb.UnimplementedLabServiceServer
-	provisioner   *docker.Provisioner
-	registry      domain.LabRegistry
-	containerLabs sync.Map
-	ttlCancels    sync.Map
-	containerTTL  time.Duration
-	log           *slog.Logger
+	provisioner          *docker.Provisioner
+	registry             domain.LabRegistry
+	containerLabs        sync.Map
+	ttlCancels           sync.Map
+	containerCreationTTL sync.Map
+	containerDeadlines   sync.Map
+	containerTTL         time.Duration
+	log                  *slog.Logger
 }
 
 func NewLabHandler(p *docker.Provisioner, r domain.LabRegistry, ttl time.Duration, log *slog.Logger) *LabHandler {
@@ -35,12 +37,13 @@ func (h *LabHandler) RegisterLab(
 	req *pb.RegisterLabRequest,
 ) (*pb.RegisterLabResponse, error) {
 	lab := domain.Lab{
-		ID:          req.LabId,
-		Image:       req.Image,
-		InitialCode: req.InitialCode,
-		JudgeCode:   req.JudgeCode,
-		JudgeType:   req.JudgeType,
-		Limits:      domain.NewResourceLimits(req.CpuLimit, req.RamLimitMb),
+		ID:              req.LabId,
+		Image:           req.Image,
+		InitialCode:     req.InitialCode,
+		JudgeCode:       req.JudgeCode,
+		JudgeType:       req.JudgeType,
+		Limits:          domain.NewResourceLimits(req.CpuLimit, req.RamLimitMb),
+		DurationSeconds: req.DurationSeconds,
 	}
 	if err := h.registry.Register(lab); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "register lab: %v", err)
@@ -48,6 +51,7 @@ func (h *LabHandler) RegisterLab(
 	h.log.Info("lab registered",
 		slog.String("lab_id", req.LabId),
 		slog.String("image", req.Image),
+		slog.Int64("duration_seconds", req.DurationSeconds),
 	)
 	return &pb.RegisterLabResponse{Success: true, LabId: req.LabId}, nil
 }
@@ -74,15 +78,23 @@ func (h *LabHandler) StartLab(
 
 	h.containerLabs.Store(id, lab)
 
+	ttl := h.containerTTL
+	if lab.DurationSeconds > 0 {
+		ttl = time.Duration(lab.DurationSeconds) * time.Second
+	}
+
+	h.containerCreationTTL.Store(id, ttl)
+	h.containerDeadlines.Store(id, time.Now().Add(ttl))
+
 	ttlCtx, ttlCancel := context.WithCancel(context.Background())
 	h.ttlCancels.Store(id, ttlCancel)
-	go h.scheduleCleanup(ttlCtx, id)
+	go h.scheduleCleanup(ttlCtx, id, ttl)
 
 	h.log.InfoContext(ctx, "lab started",
 		slog.String("lab_id", req.LabId),
 		slog.String("container_id", id),
 		slog.Duration("took", time.Since(start)),
-		slog.Duration("ttl", h.containerTTL),
+		slog.Duration("ttl", ttl),
 	)
 
 	return &pb.LabResponse{
@@ -99,6 +111,8 @@ func (h *LabHandler) StopLab(
 	if v, ok := h.ttlCancels.LoadAndDelete(req.ContainerId); ok {
 		v.(context.CancelFunc)()
 	}
+	h.containerCreationTTL.Delete(req.ContainerId)
+	h.containerDeadlines.Delete(req.ContainerId)
 	if err := h.provisioner.Stop(ctx, req.ContainerId); err != nil {
 		return &pb.StopResponse{Success: false},
 			status.Errorf(codes.Internal, "stop container: %v", err)
@@ -107,14 +121,15 @@ func (h *LabHandler) StopLab(
 	return &pb.StopResponse{Success: true}, nil
 }
 
-func (h *LabHandler) scheduleCleanup(ctx context.Context, containerID string) {
+func (h *LabHandler) scheduleCleanup(ctx context.Context, containerID string, ttl time.Duration) {
 	select {
-	case <-time.After(h.containerTTL):
+	case <-time.After(ttl):
 		h.log.Info("TTL expired, stopping container", slog.String("container_id", containerID))
 		_ = h.provisioner.Stop(context.Background(), containerID)
 		h.containerLabs.Delete(containerID)
 		h.ttlCancels.Delete(containerID)
 	case <-ctx.Done():
+		h.log.Debug("cleanup cancelled", slog.String("container_id", containerID))
 	}
 }
 
@@ -280,5 +295,74 @@ func (h *LabHandler) UploadFile(
 	return &pb.UploadFileResponse{
 		Success:  true,
 		ErrorMsg: "",
+	}, nil
+}
+
+func (h *LabHandler) ExtendLab(
+	ctx context.Context,
+	req *pb.ExtendLabRequest,
+) (*pb.ExtendLabResponse, error) {
+	containerID := req.ContainerId
+	extendSecs := req.ExtendSeconds
+
+	h.log.InfoContext(ctx, "ExtendLab requested",
+		slog.String("container_id", containerID),
+		slog.Int64("extend_seconds", extendSecs),
+	)
+
+	if _, ok := h.containerLabs.Load(containerID); !ok {
+		return &pb.ExtendLabResponse{
+			Success:  false,
+			ErrorMsg: fmt.Sprintf("container %q not found", containerID),
+		}, nil
+	}
+
+	if extendSecs <= 0 {
+		return &pb.ExtendLabResponse{
+			Success:  false,
+			ErrorMsg: "extend_seconds must be positive",
+		}, nil
+	}
+
+	deadline, ok := h.containerDeadlines.Load(containerID)
+	if !ok {
+		return &pb.ExtendLabResponse{
+			Success:  false,
+			ErrorMsg: "deadline not found for container",
+		}, nil
+	}
+
+	oldDeadline := deadline.(time.Time)
+	newDeadline := oldDeadline.Add(time.Duration(extendSecs) * time.Second)
+	remainingTime := time.Until(newDeadline)
+
+	if remainingTime <= 0 {
+		return &pb.ExtendLabResponse{
+			Success:  false,
+			ErrorMsg: "container would expire immediately after extension",
+		}, nil
+	}
+
+	if v, ok := h.ttlCancels.LoadAndDelete(containerID); ok {
+		v.(context.CancelFunc)()
+	}
+
+	h.containerDeadlines.Store(containerID, newDeadline)
+
+	ttlCtx, ttlCancel := context.WithCancel(context.Background())
+	h.ttlCancels.Store(containerID, ttlCancel)
+	go h.scheduleCleanup(ttlCtx, containerID, remainingTime)
+
+	h.log.InfoContext(ctx, "lab extended",
+		slog.String("container_id", containerID),
+		slog.Time("old_deadline", oldDeadline),
+		slog.Time("new_deadline", newDeadline),
+		slog.Int64("remaining_seconds", int64(remainingTime.Seconds())),
+	)
+
+	return &pb.ExtendLabResponse{
+		Success:       true,
+		NewTtlSeconds: int64(remainingTime.Seconds()),
+		ErrorMsg:      "",
 	}, nil
 }

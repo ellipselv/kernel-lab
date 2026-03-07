@@ -22,16 +22,17 @@ const (
 )
 
 type RegisterLabRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	LabId         string                 `protobuf:"bytes,1,opt,name=lab_id,json=labId,proto3" json:"lab_id,omitempty"`
-	Image         string                 `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
-	InitialCode   string                 `protobuf:"bytes,3,opt,name=initial_code,json=initialCode,proto3" json:"initial_code,omitempty"`
-	JudgeCode     string                 `protobuf:"bytes,4,opt,name=judge_code,json=judgeCode,proto3" json:"judge_code,omitempty"`
-	JudgeType     string                 `protobuf:"bytes,5,opt,name=judge_type,json=judgeType,proto3" json:"judge_type,omitempty"`
-	CpuLimit      float64                `protobuf:"fixed64,6,opt,name=cpu_limit,json=cpuLimit,proto3" json:"cpu_limit,omitempty"`
-	RamLimitMb    int64                  `protobuf:"varint,7,opt,name=ram_limit_mb,json=ramLimitMb,proto3" json:"ram_limit_mb,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	LabId           string                 `protobuf:"bytes,1,opt,name=lab_id,json=labId,proto3" json:"lab_id,omitempty"`
+	Image           string                 `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	InitialCode     string                 `protobuf:"bytes,3,opt,name=initial_code,json=initialCode,proto3" json:"initial_code,omitempty"`
+	JudgeCode       string                 `protobuf:"bytes,4,opt,name=judge_code,json=judgeCode,proto3" json:"judge_code,omitempty"`
+	JudgeType       string                 `protobuf:"bytes,5,opt,name=judge_type,json=judgeType,proto3" json:"judge_type,omitempty"`
+	CpuLimit        float64                `protobuf:"fixed64,6,opt,name=cpu_limit,json=cpuLimit,proto3" json:"cpu_limit,omitempty"`
+	RamLimitMb      int64                  `protobuf:"varint,7,opt,name=ram_limit_mb,json=ramLimitMb,proto3" json:"ram_limit_mb,omitempty"`
+	DurationSeconds int64                  `protobuf:"varint,8,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"` // 0 means use default (30 min)
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RegisterLabRequest) Reset() {
@@ -109,6 +110,13 @@ func (x *RegisterLabRequest) GetCpuLimit() float64 {
 func (x *RegisterLabRequest) GetRamLimitMb() int64 {
 	if x != nil {
 		return x.RamLimitMb
+	}
+	return 0
+}
+
+func (x *RegisterLabRequest) GetDurationSeconds() int64 {
+	if x != nil {
+		return x.DurationSeconds
 	}
 	return 0
 }
@@ -449,7 +457,7 @@ type ExecRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ContainerId    string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
 	Code           string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	TimeoutSeconds int32                  `protobuf:"varint,3,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"` // 0 means default (30s)
+	TimeoutSeconds int32                  `protobuf:"varint,3,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -568,8 +576,8 @@ func (x *ExecResponse) GetExitCode() int32 {
 type UploadFileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	DestPath      string                 `protobuf:"bytes,2,opt,name=dest_path,json=destPath,proto3" json:"dest_path,omitempty"` // e.g., "/tmp"
-	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`                 // e.g., "solution"
+	DestPath      string                 `protobuf:"bytes,2,opt,name=dest_path,json=destPath,proto3" json:"dest_path,omitempty"`
+	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`
 	Content       []byte                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -685,11 +693,123 @@ func (x *UploadFileResponse) GetErrorMsg() string {
 	return ""
 }
 
+type ExtendLabRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	ExtendSeconds int64                  `protobuf:"varint,2,opt,name=extend_seconds,json=extendSeconds,proto3" json:"extend_seconds,omitempty"` // how many seconds to extend (e.g., 900 for 15 min)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExtendLabRequest) Reset() {
+	*x = ExtendLabRequest{}
+	mi := &file_api_proto_lab_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExtendLabRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtendLabRequest) ProtoMessage() {}
+
+func (x *ExtendLabRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtendLabRequest.ProtoReflect.Descriptor instead.
+func (*ExtendLabRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ExtendLabRequest) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *ExtendLabRequest) GetExtendSeconds() int64 {
+	if x != nil {
+		return x.ExtendSeconds
+	}
+	return 0
+}
+
+type ExtendLabResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	NewTtlSeconds int64                  `protobuf:"varint,2,opt,name=new_ttl_seconds,json=newTtlSeconds,proto3" json:"new_ttl_seconds,omitempty"` // remaining TTL after extension
+	ErrorMsg      string                 `protobuf:"bytes,3,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExtendLabResponse) Reset() {
+	*x = ExtendLabResponse{}
+	mi := &file_api_proto_lab_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExtendLabResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtendLabResponse) ProtoMessage() {}
+
+func (x *ExtendLabResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_lab_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtendLabResponse.ProtoReflect.Descriptor instead.
+func (*ExtendLabResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_lab_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ExtendLabResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ExtendLabResponse) GetNewTtlSeconds() int64 {
+	if x != nil {
+		return x.NewTtlSeconds
+	}
+	return 0
+}
+
+func (x *ExtendLabResponse) GetErrorMsg() string {
+	if x != nil {
+		return x.ErrorMsg
+	}
+	return ""
+}
+
 var File_api_proto_lab_proto protoreflect.FileDescriptor
 
 const file_api_proto_lab_proto_rawDesc = "" +
 	"\n" +
-	"\x13api/proto/lab.proto\x12\x03lab\"\xe1\x01\n" +
+	"\x13api/proto/lab.proto\x12\x03lab\"\x8c\x02\n" +
 	"\x12RegisterLabRequest\x12\x15\n" +
 	"\x06lab_id\x18\x01 \x01(\tR\x05labId\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12!\n" +
@@ -700,7 +820,8 @@ const file_api_proto_lab_proto_rawDesc = "" +
 	"judge_type\x18\x05 \x01(\tR\tjudgeType\x12\x1b\n" +
 	"\tcpu_limit\x18\x06 \x01(\x01R\bcpuLimit\x12 \n" +
 	"\fram_limit_mb\x18\a \x01(\x03R\n" +
-	"ramLimitMb\"F\n" +
+	"ramLimitMb\x12)\n" +
+	"\x10duration_seconds\x18\b \x01(\x03R\x0fdurationSeconds\"F\n" +
 	"\x13RegisterLabResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x15\n" +
 	"\x06lab_id\x18\x02 \x01(\tR\x05labId\"#\n" +
@@ -734,7 +855,14 @@ const file_api_proto_lab_proto_rawDesc = "" +
 	"\acontent\x18\x04 \x01(\fR\acontent\"K\n" +
 	"\x12UploadFileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1b\n" +
-	"\terror_msg\x18\x02 \x01(\tR\berrorMsg2\xdd\x02\n" +
+	"\terror_msg\x18\x02 \x01(\tR\berrorMsg\"\\\n" +
+	"\x10ExtendLabRequest\x12!\n" +
+	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12%\n" +
+	"\x0eextend_seconds\x18\x02 \x01(\x03R\rextendSeconds\"r\n" +
+	"\x11ExtendLabResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12&\n" +
+	"\x0fnew_ttl_seconds\x18\x02 \x01(\x03R\rnewTtlSeconds\x12\x1b\n" +
+	"\terror_msg\x18\x03 \x01(\tR\berrorMsg2\x99\x03\n" +
 	"\n" +
 	"LabService\x12@\n" +
 	"\vRegisterLab\x12\x17.lab.RegisterLabRequest\x1a\x18.lab.RegisterLabResponse\x12-\n" +
@@ -743,7 +871,8 @@ const file_api_proto_lab_proto_rawDesc = "" +
 	"\x0eTerminalStream\x12\x12.lab.TerminalInput\x1a\x13.lab.TerminalOutput(\x010\x01\x120\n" +
 	"\tExecCheck\x12\x10.lab.ExecRequest\x1a\x11.lab.ExecResponse\x12=\n" +
 	"\n" +
-	"UploadFile\x12\x16.lab.UploadFileRequest\x1a\x17.lab.UploadFileResponseB)Z'github.com/ellipse/kernel-lab/api/protob\x06proto3"
+	"UploadFile\x12\x16.lab.UploadFileRequest\x1a\x17.lab.UploadFileResponse\x12:\n" +
+	"\tExtendLab\x12\x15.lab.ExtendLabRequest\x1a\x16.lab.ExtendLabResponseB)Z'github.com/ellipse/kernel-lab/api/protob\x06proto3"
 
 var (
 	file_api_proto_lab_proto_rawDescOnce sync.Once
@@ -757,7 +886,7 @@ func file_api_proto_lab_proto_rawDescGZIP() []byte {
 	return file_api_proto_lab_proto_rawDescData
 }
 
-var file_api_proto_lab_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_api_proto_lab_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_api_proto_lab_proto_goTypes = []any{
 	(*RegisterLabRequest)(nil),  // 0: lab.RegisterLabRequest
 	(*RegisterLabResponse)(nil), // 1: lab.RegisterLabResponse
@@ -771,6 +900,8 @@ var file_api_proto_lab_proto_goTypes = []any{
 	(*ExecResponse)(nil),        // 9: lab.ExecResponse
 	(*UploadFileRequest)(nil),   // 10: lab.UploadFileRequest
 	(*UploadFileResponse)(nil),  // 11: lab.UploadFileResponse
+	(*ExtendLabRequest)(nil),    // 12: lab.ExtendLabRequest
+	(*ExtendLabResponse)(nil),   // 13: lab.ExtendLabResponse
 }
 var file_api_proto_lab_proto_depIdxs = []int32{
 	0,  // 0: lab.LabService.RegisterLab:input_type -> lab.RegisterLabRequest
@@ -779,14 +910,16 @@ var file_api_proto_lab_proto_depIdxs = []int32{
 	6,  // 3: lab.LabService.TerminalStream:input_type -> lab.TerminalInput
 	8,  // 4: lab.LabService.ExecCheck:input_type -> lab.ExecRequest
 	10, // 5: lab.LabService.UploadFile:input_type -> lab.UploadFileRequest
-	1,  // 6: lab.LabService.RegisterLab:output_type -> lab.RegisterLabResponse
-	3,  // 7: lab.LabService.StartLab:output_type -> lab.LabResponse
-	5,  // 8: lab.LabService.StopLab:output_type -> lab.StopResponse
-	7,  // 9: lab.LabService.TerminalStream:output_type -> lab.TerminalOutput
-	9,  // 10: lab.LabService.ExecCheck:output_type -> lab.ExecResponse
-	11, // 11: lab.LabService.UploadFile:output_type -> lab.UploadFileResponse
-	6,  // [6:12] is the sub-list for method output_type
-	0,  // [0:6] is the sub-list for method input_type
+	12, // 6: lab.LabService.ExtendLab:input_type -> lab.ExtendLabRequest
+	1,  // 7: lab.LabService.RegisterLab:output_type -> lab.RegisterLabResponse
+	3,  // 8: lab.LabService.StartLab:output_type -> lab.LabResponse
+	5,  // 9: lab.LabService.StopLab:output_type -> lab.StopResponse
+	7,  // 10: lab.LabService.TerminalStream:output_type -> lab.TerminalOutput
+	9,  // 11: lab.LabService.ExecCheck:output_type -> lab.ExecResponse
+	11, // 12: lab.LabService.UploadFile:output_type -> lab.UploadFileResponse
+	13, // 13: lab.LabService.ExtendLab:output_type -> lab.ExtendLabResponse
+	7,  // [7:14] is the sub-list for method output_type
+	0,  // [0:7] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
@@ -803,7 +936,7 @@ func file_api_proto_lab_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_lab_proto_rawDesc), len(file_api_proto_lab_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
