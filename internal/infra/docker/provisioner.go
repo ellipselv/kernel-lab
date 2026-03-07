@@ -139,7 +139,7 @@ func (p *Provisioner) execDone(ctx context.Context, id string, res domain.ExecRe
 	)
 }
 
-func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, func(), error) {
+func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, string, func(), error) {
 	p.log.DebugContext(ctx, "attaching PTY", slog.String("container_id", id))
 	created, err := p.api.ExecCreate(ctx, id, client.ExecCreateOptions{
 		Cmd:          []string{"/bin/sh"},
@@ -149,15 +149,31 @@ func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io
 		TTY:          true,
 	})
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("attach exec create: %w", err)
+		return nil, nil, "", nil, fmt.Errorf("attach exec create: %w", err)
 	}
 
 	ar, err := p.api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{TTY: true})
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("attach exec attach: %w", err)
+		return nil, nil, "", nil, fmt.Errorf("attach exec attach: %w", err)
 	}
-	p.log.InfoContext(ctx, "PTY attached", slog.String("container_id", id))
-	return ar.Conn, ar.Reader, ar.Close, nil
+	p.log.InfoContext(ctx, "PTY attached",
+		slog.String("container_id", id),
+		slog.String("exec_id", created.ID),
+	)
+	return ar.Conn, ar.Reader, created.ID, ar.Close, nil
+}
+
+func (p *Provisioner) ResizeTTY(ctx context.Context, execID string, cols, rows uint) error {
+	p.log.DebugContext(ctx, "resizing PTY",
+		slog.String("exec_id", execID),
+		slog.Int("cols", int(cols)),
+		slog.Int("rows", int(rows)),
+	)
+	_, err := p.api.ExecResize(ctx, execID, client.ExecResizeOptions{
+		Height: rows,
+		Width:  cols,
+	})
+	return err
 }
 
 func (p *Provisioner) UploadFile(ctx context.Context, containerID, destPath, filename string, content []byte) error {

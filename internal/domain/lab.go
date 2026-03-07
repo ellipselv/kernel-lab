@@ -49,6 +49,7 @@ type Provisioner interface {
 	Spawn(ctx context.Context, lab Lab) (containerID string, err error)
 	Stop(ctx context.Context, id string) error
 	Exec(ctx context.Context, id string, cmd []string) (ExecResult, error)
-	Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, func(), error)
+	Attach(ctx context.Context, id string) (stdin io.WriteCloser, stdout io.Reader, execID string, cleanup func(), err error)
+	ResizeTTY(ctx context.Context, execID string, cols, rows uint) error
 	UploadFile(ctx context.Context, containerID, destPath, filename string, content []byte) error
 }

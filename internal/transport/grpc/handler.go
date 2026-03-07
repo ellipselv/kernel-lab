@@ -147,28 +147,41 @@ func (h *LabHandler) TerminalStream(
 
 	h.log.InfoContext(stream.Context(), "terminal stream opened", slog.String("container_id", containerID))
 
-	stdin, stdout, cleanup, err := h.provisioner.Attach(stream.Context(), containerID)
+	stdin, stdout, execID, cleanup, err := h.provisioner.Attach(stream.Context(), containerID)
 	if err != nil {
 		return status.Errorf(codes.Internal, "attach to container: %v", err)
 	}
 	defer cleanup()
 
-	outErr := make(chan error, 1)
+	if first.Cols > 0 && first.Rows > 0 {
+		if resizeErr := h.provisioner.ResizeTTY(stream.Context(), execID, uint(first.Cols), uint(first.Rows)); resizeErr != nil {
+			h.log.WarnContext(stream.Context(), "initial resize failed",
+				slog.String("container_id", containerID),
+				slog.Any("error", resizeErr),
+			)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	downErr := make(chan error, 1)
 	go func() {
+		defer cancel()
 		buf := make([]byte, 4096)
 		for {
-			n, err := stdout.Read(buf)
+			n, readErr := stdout.Read(buf)
 			if n > 0 {
 				if sendErr := stream.Send(&pb.TerminalOutput{Data: buf[:n]}); sendErr != nil {
-					outErr <- sendErr
+					downErr <- fmt.Errorf("send: %w", sendErr)
 					return
 				}
 			}
-			if err != nil {
-				if err != io.EOF {
-					outErr <- fmt.Errorf("stdout read: %w", err)
+			if readErr != nil {
+				if readErr != io.EOF {
+					downErr <- fmt.Errorf("stdout read: %w", readErr)
 				} else {
-					outErr <- nil
+					downErr <- nil
 				}
 				return
 			}
@@ -181,30 +194,54 @@ func (h *LabHandler) TerminalStream(
 		}
 	}
 
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
+	go func() {
+		defer cancel()
+		defer stdin.Close()
+		for {
+			msg, recvErr := stream.Recv()
+			if recvErr != nil {
+				if recvErr != io.EOF {
+					h.log.WarnContext(ctx, "terminal stream recv error",
+						slog.String("container_id", containerID),
+						slog.Any("error", recvErr),
+					)
+				}
+				return
 			}
-			h.log.WarnContext(stream.Context(), "terminal stream recv error",
-				slog.String("container_id", containerID),
-				slog.Any("error", err),
-			)
-			break
-		}
-		if _, err := stdin.Write(msg.Data); err != nil {
-			h.log.WarnContext(stream.Context(), "terminal stdin write error",
-				slog.String("container_id", containerID),
-				slog.Any("error", err),
-			)
-			break
-		}
-	}
 
-	h.log.InfoContext(stream.Context(), "terminal stream closed", slog.String("container_id", containerID))
-	stdin.Close()
-	return <-outErr
+			if msg.Cols > 0 && msg.Rows > 0 {
+				if resizeErr := h.provisioner.ResizeTTY(ctx, execID, uint(msg.Cols), uint(msg.Rows)); resizeErr != nil {
+					h.log.WarnContext(ctx, "resize failed",
+						slog.String("container_id", containerID),
+						slog.Any("error", resizeErr),
+					)
+				}
+			}
+
+			if len(msg.Data) > 0 {
+				if _, writeErr := stdin.Write(msg.Data); writeErr != nil {
+					h.log.WarnContext(ctx, "terminal stdin write error",
+						slog.String("container_id", containerID),
+						slog.Any("error", writeErr),
+					)
+					return
+				}
+			}
+		}
+	}()
+
+	select {
+	case err := <-downErr:
+		h.log.InfoContext(stream.Context(), "terminal stream closed (downstream)",
+			slog.String("container_id", containerID),
+		)
+		return err
+	case <-ctx.Done():
+		h.log.InfoContext(stream.Context(), "terminal stream closed (client disconnected)",
+			slog.String("container_id", containerID),
+		)
+		return nil
+	}
 }
 
 func (h *LabHandler) ExecCheck(

@@ -31,7 +31,7 @@ type RegisterLabRequest struct {
 	JudgeType       string                 `protobuf:"bytes,5,opt,name=judge_type,json=judgeType,proto3" json:"judge_type,omitempty"`
 	CpuLimit        float64                `protobuf:"fixed64,6,opt,name=cpu_limit,json=cpuLimit,proto3" json:"cpu_limit,omitempty"`
 	RamLimitMb      int64                  `protobuf:"varint,7,opt,name=ram_limit_mb,json=ramLimitMb,proto3" json:"ram_limit_mb,omitempty"`
-	DurationSeconds int64                  `protobuf:"varint,8,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"` // 0 means use default (30 min)
+	DurationSeconds int64                  `protobuf:"varint,8,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -362,6 +362,8 @@ type TerminalInput struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
 	Data          []byte                 `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Cols          uint32                 `protobuf:"varint,3,opt,name=cols,proto3" json:"cols,omitempty"`
+	Rows          uint32                 `protobuf:"varint,4,opt,name=rows,proto3" json:"rows,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -408,6 +410,20 @@ func (x *TerminalInput) GetData() []byte {
 		return x.Data
 	}
 	return nil
+}
+
+func (x *TerminalInput) GetCols() uint32 {
+	if x != nil {
+		return x.Cols
+	}
+	return 0
+}
+
+func (x *TerminalInput) GetRows() uint32 {
+	if x != nil {
+		return x.Rows
+	}
+	return 0
 }
 
 type TerminalOutput struct {
@@ -835,10 +851,12 @@ const file_api_proto_lab_proto_rawDesc = "" +
 	"\vStopRequest\x12!\n" +
 	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\"(\n" +
 	"\fStopResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"F\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"n\n" +
 	"\rTerminalInput\x12!\n" +
 	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
-	"\x04data\x18\x02 \x01(\fR\x04data\"$\n" +
+	"\x04data\x18\x02 \x01(\fR\x04data\x12\x12\n" +
+	"\x04cols\x18\x03 \x01(\rR\x04cols\x12\x12\n" +
+	"\x04rows\x18\x04 \x01(\rR\x04rows\"$\n" +
 	"\x0eTerminalOutput\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\"m\n" +
 	"\vExecRequest\x12!\n" +
