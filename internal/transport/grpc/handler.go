@@ -133,6 +133,17 @@ func (h *LabHandler) scheduleCleanup(ctx context.Context, containerID string, tt
 	}
 }
 
+type streamWriter struct {
+	stream grpc.BidiStreamingServer[pb.TerminalInput, pb.TerminalOutput]
+}
+
+func (w *streamWriter) Write(p []byte) (int, error) {
+	if err := w.stream.Send(&pb.TerminalOutput{Data: p}); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
 func (h *LabHandler) TerminalStream(
 	stream grpc.BidiStreamingServer[pb.TerminalInput, pb.TerminalOutput],
 ) error {
@@ -147,100 +158,63 @@ func (h *LabHandler) TerminalStream(
 
 	h.log.InfoContext(stream.Context(), "terminal stream opened", logger.String("container_id", containerID))
 
-	stdin, stdout, execID, cleanup, err := h.provisioner.Attach(stream.Context(), containerID)
-	if err != nil {
-		return status.Errorf(codes.Internal, "attach to container: %v", err)
-	}
-	defer cleanup()
-
-	if first.Cols > 0 && first.Rows > 0 {
-		if resizeErr := h.provisioner.ResizeTTY(stream.Context(), execID, uint(first.Cols), uint(first.Rows)); resizeErr != nil {
-			h.log.WarnContext(stream.Context(), "initial resize failed",
-				logger.String("container_id", containerID),
-				logger.Any("error", resizeErr),
-			)
-		}
-	}
-
-	ctx, cancel := context.WithCancel(stream.Context())
-	defer cancel()
-
-	downErr := make(chan error, 1)
-	go func() {
-		defer cancel()
-		buf := make([]byte, 4096)
-		for {
-			n, readErr := stdout.Read(buf)
-			if n > 0 {
-				if sendErr := stream.Send(&pb.TerminalOutput{Data: buf[:n]}); sendErr != nil {
-					downErr <- fmt.Errorf("send: %w", sendErr)
-					return
-				}
-			}
-			if readErr != nil {
-				if readErr != io.EOF {
-					downErr <- fmt.Errorf("stdout read: %w", readErr)
-				} else {
-					downErr <- nil
-				}
-				return
-			}
-		}
-	}()
-
-	if len(first.Data) > 0 {
-		if _, err := stdin.Write(first.Data); err != nil {
-			return status.Errorf(codes.Internal, "write initial data: %v", err)
-		}
-	}
+	pr, pw := io.Pipe()
+	resizeCh := make(chan domain.ResizeEvent, 4)
 
 	go func() {
-		defer cancel()
-		defer stdin.Close()
+		defer pw.Close()
+		defer close(resizeCh)
+
+		for _, msg := range []*pb.TerminalInput{first, nil} {
+			if msg == nil {
+				break
+			}
+			h.dispatchTerminalMsg(msg, pw, resizeCh, containerID)
+		}
+
 		for {
 			msg, recvErr := stream.Recv()
 			if recvErr != nil {
 				if recvErr != io.EOF {
-					h.log.WarnContext(ctx, "terminal stream recv error",
+					h.log.WarnContext(stream.Context(), "terminal recv error",
 						logger.String("container_id", containerID),
 						logger.Any("error", recvErr),
 					)
 				}
 				return
 			}
-
-			if msg.Cols > 0 && msg.Rows > 0 {
-				if resizeErr := h.provisioner.ResizeTTY(ctx, execID, uint(msg.Cols), uint(msg.Rows)); resizeErr != nil {
-					h.log.WarnContext(ctx, "resize failed",
-						logger.String("container_id", containerID),
-						logger.Any("error", resizeErr),
-					)
-				}
-			}
-
-			if len(msg.Data) > 0 {
-				if _, writeErr := stdin.Write(msg.Data); writeErr != nil {
-					h.log.WarnContext(ctx, "terminal stdin write error",
-						logger.String("container_id", containerID),
-						logger.Any("error", writeErr),
-					)
-					return
-				}
-			}
+			h.dispatchTerminalMsg(msg, pw, resizeCh, containerID)
 		}
 	}()
 
-	select {
-	case err := <-downErr:
-		h.log.InfoContext(stream.Context(), "terminal stream closed (downstream)",
+	rw := struct {
+		io.Reader
+		io.Writer
+	}{Reader: pr, Writer: &streamWriter{stream: stream}}
+
+	if err := h.provisioner.StreamTerminal(stream.Context(), containerID, &rw, resizeCh); err != nil {
+		h.log.InfoContext(stream.Context(), "terminal stream closed",
 			logger.String("container_id", containerID),
-		)
-		return err
-	case <-ctx.Done():
-		h.log.InfoContext(stream.Context(), "terminal stream closed (client disconnected)",
-			logger.String("container_id", containerID),
+			logger.Any("error", err),
 		)
 		return nil
+	}
+
+	h.log.InfoContext(stream.Context(), "terminal stream closed", logger.String("container_id", containerID))
+	return nil
+}
+
+func (h *LabHandler) dispatchTerminalMsg(msg *pb.TerminalInput, pw *io.PipeWriter, resizeCh chan<- domain.ResizeEvent, containerID string) {
+	if msg.Cols > 0 && msg.Rows > 0 {
+		resizeCh <- domain.ResizeEvent{Cols: uint(msg.Cols), Rows: uint(msg.Rows)}
+	}
+	if len(msg.Data) > 0 {
+		if _, err := pw.Write(msg.Data); err != nil {
+			h.log.Warn("terminal pipe write error",
+				logger.String("container_id", containerID),
+				logger.Any("error", err),
+			)
+		}
 	}
 }
 

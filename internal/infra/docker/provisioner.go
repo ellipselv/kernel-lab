@@ -139,9 +139,10 @@ func (p *Provisioner) execDone(ctx context.Context, id string, res domain.ExecRe
 	)
 }
 
-func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, string, func(), error) {
-	p.log.DebugContext(ctx, "attaching PTY", logger.String("container_id", id))
-	created, err := p.api.ExecCreate(ctx, id, client.ExecCreateOptions{
+func (p *Provisioner) StreamTerminal(ctx context.Context, containerID string, rw io.ReadWriter, resize <-chan domain.ResizeEvent) error {
+	p.log.DebugContext(ctx, "creating PTY session", logger.String("container_id", containerID))
+
+	created, err := p.api.ExecCreate(ctx, containerID, client.ExecCreateOptions{
 		Cmd:          []string{"/bin/sh"},
 		AttachStdin:  true,
 		AttachStdout: true,
@@ -149,31 +150,60 @@ func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io
 		TTY:          true,
 	})
 	if err != nil {
-		return nil, nil, "", nil, fmt.Errorf("attach exec create: %w", err)
+		return fmt.Errorf("exec create: %w", err)
 	}
 
-	ar, err := p.api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{TTY: true})
+	resp, err := p.api.ExecAttach(ctx, created.ID, client.ExecAttachOptions{TTY: true})
 	if err != nil {
-		return nil, nil, "", nil, fmt.Errorf("attach exec attach: %w", err)
+		return fmt.Errorf("exec attach: %w", err)
 	}
+	defer resp.Close()
+
 	p.log.InfoContext(ctx, "PTY attached",
-		logger.String("container_id", id),
+		logger.String("container_id", containerID),
 		logger.String("exec_id", created.ID),
 	)
-	return ar.Conn, ar.Reader, created.ID, ar.Close, nil
-}
 
-func (p *Provisioner) ResizeTTY(ctx context.Context, execID string, cols, rows uint) error {
-	p.log.DebugContext(ctx, "resizing PTY",
-		logger.String("exec_id", execID),
-		logger.Int("cols", int(cols)),
-		logger.Int("rows", int(rows)),
-	)
-	_, err := p.api.ExecResize(ctx, execID, client.ExecResizeOptions{
-		Height: rows,
-		Width:  cols,
-	})
-	return err
+	errCh := make(chan error, 2)
+
+	go func() {
+		_, err := io.Copy(rw, resp.Reader)
+		errCh <- err
+	}()
+
+	go func() {
+		_, err := io.Copy(resp.Conn, rw)
+		errCh <- err
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-resize:
+				if !ok {
+					return
+				}
+				if _, resizeErr := p.api.ExecResize(ctx, created.ID, client.ExecResizeOptions{
+					Height: ev.Rows,
+					Width:  ev.Cols,
+				}); resizeErr != nil {
+					p.log.WarnContext(ctx, "resize failed",
+						logger.String("exec_id", created.ID),
+						logger.Any("error", resizeErr),
+					)
+				}
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	}
 }
 
 func (p *Provisioner) UploadFile(ctx context.Context, containerID, destPath, filename string, content []byte) error {
