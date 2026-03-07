@@ -9,10 +9,9 @@ tasks:
     cmds:
       - go install github.com/bufbuild/buf/cmd/buf@latest
       - go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
-      - go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
   proto:
-    desc: Generate protobuf, gRPC, gateway and OpenAPI via Buf
+    desc: Generate protobuf, gRPC and gateway via Buf
     cmds:
       - buf mod update
       - buf generate
