@@ -7,20 +7,20 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log/slog"
 	"time"
 
 	"github.com/ellipse/kernel-lab/internal/domain"
+	"github.com/ellipse/kernel-lab/internal/logger"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 )
 
 type Provisioner struct {
 	api *client.Client
-	log *slog.Logger
+	log logger.Logger
 }
 
-func NewProvisioner(log *slog.Logger) (*Provisioner, error) {
+func NewProvisioner(log logger.Logger) (*Provisioner, error) {
 	apiClient, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func NewProvisioner(log *slog.Logger) (*Provisioner, error) {
 
 func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error) {
 	if _, err := p.api.ImageInspect(ctx, lab.Image); err != nil {
-		p.log.InfoContext(ctx, "image not found locally, pulling", slog.String("image", lab.Image))
+		p.log.InfoContext(ctx, "image not found locally, pulling", logger.String("image", lab.Image))
 		start := time.Now()
 		reader, err := p.api.ImagePull(ctx, lab.Image, client.ImagePullOptions{})
 		if err != nil {
@@ -39,11 +39,11 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 		defer reader.Close()
 		io.Copy(io.Discard, reader)
 		p.log.InfoContext(ctx, "image pulled",
-			slog.String("image", lab.Image),
-			slog.Duration("took", time.Since(start)),
+			logger.String("image", lab.Image),
+			logger.Any("took", time.Since(start)),
 		)
 	} else {
-		p.log.DebugContext(ctx, "image already present, skipping pull", slog.String("image", lab.Image))
+		p.log.DebugContext(ctx, "image already present, skipping pull", logger.String("image", lab.Image))
 	}
 
 	start := time.Now()
@@ -69,31 +69,31 @@ func (p *Provisioner) Spawn(ctx context.Context, lab domain.Lab) (string, error)
 		return "", err
 	}
 	p.log.InfoContext(ctx, "container started",
-		slog.String("container_id", resp.ID),
-		slog.String("lab_id", lab.ID),
-		slog.String("image", lab.Image),
-		slog.Duration("took", time.Since(start)),
+		logger.String("container_id", resp.ID),
+		logger.String("lab_id", lab.ID),
+		logger.String("image", lab.Image),
+		logger.Any("took", time.Since(start)),
 	)
 	return resp.ID, nil
 }
 
 func (p *Provisioner) Stop(ctx context.Context, id string) error {
-	p.log.InfoContext(ctx, "stopping container", slog.String("container_id", id))
+	p.log.InfoContext(ctx, "stopping container", logger.String("container_id", id))
 	if _, err := p.api.ContainerStop(ctx, id, client.ContainerStopOptions{}); err != nil {
 		p.log.ErrorContext(ctx, "failed to stop container",
-			slog.String("container_id", id),
-			slog.Any("error", err),
+			logger.String("container_id", id),
+			logger.Any("error", err),
 		)
 		return fmt.Errorf("failed to stop container %s: %w", id, err)
 	}
-	p.log.InfoContext(ctx, "container stopped", slog.String("container_id", id))
+	p.log.InfoContext(ctx, "container stopped", logger.String("container_id", id))
 	return nil
 }
 
 func (p *Provisioner) Exec(ctx context.Context, id string, cmd []string) (domain.ExecResult, error) {
 	p.log.DebugContext(ctx, "exec start",
-		slog.String("container_id", id),
-		slog.Any("cmd", cmd),
+		logger.String("container_id", id),
+		logger.Any("cmd", cmd),
 	)
 	start := time.Now()
 	created, err := p.api.ExecCreate(ctx, id, client.ExecCreateOptions{
@@ -133,14 +133,14 @@ func (p *Provisioner) Exec(ctx context.Context, id string, cmd []string) (domain
 
 func (p *Provisioner) execDone(ctx context.Context, id string, res domain.ExecResult, took time.Duration) {
 	p.log.InfoContext(ctx, "exec done",
-		slog.String("container_id", id),
-		slog.Int("exit_code", res.ExitCode),
-		slog.Duration("took", took),
+		logger.String("container_id", id),
+		logger.Int("exit_code", res.ExitCode),
+		logger.Any("took", took),
 	)
 }
 
 func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io.Reader, string, func(), error) {
-	p.log.DebugContext(ctx, "attaching PTY", slog.String("container_id", id))
+	p.log.DebugContext(ctx, "attaching PTY", logger.String("container_id", id))
 	created, err := p.api.ExecCreate(ctx, id, client.ExecCreateOptions{
 		Cmd:          []string{"/bin/sh"},
 		AttachStdin:  true,
@@ -157,17 +157,17 @@ func (p *Provisioner) Attach(ctx context.Context, id string) (io.WriteCloser, io
 		return nil, nil, "", nil, fmt.Errorf("attach exec attach: %w", err)
 	}
 	p.log.InfoContext(ctx, "PTY attached",
-		slog.String("container_id", id),
-		slog.String("exec_id", created.ID),
+		logger.String("container_id", id),
+		logger.String("exec_id", created.ID),
 	)
 	return ar.Conn, ar.Reader, created.ID, ar.Close, nil
 }
 
 func (p *Provisioner) ResizeTTY(ctx context.Context, execID string, cols, rows uint) error {
 	p.log.DebugContext(ctx, "resizing PTY",
-		slog.String("exec_id", execID),
-		slog.Int("cols", int(cols)),
-		slog.Int("rows", int(rows)),
+		logger.String("exec_id", execID),
+		logger.Int("cols", int(cols)),
+		logger.Int("rows", int(rows)),
 	)
 	_, err := p.api.ExecResize(ctx, execID, client.ExecResizeOptions{
 		Height: rows,
@@ -178,10 +178,10 @@ func (p *Provisioner) ResizeTTY(ctx context.Context, execID string, cols, rows u
 
 func (p *Provisioner) UploadFile(ctx context.Context, containerID, destPath, filename string, content []byte) error {
 	p.log.DebugContext(ctx, "uploading file to container",
-		slog.String("container_id", containerID),
-		slog.String("dest_path", destPath),
-		slog.String("filename", filename),
-		slog.Int("size", len(content)),
+		logger.String("container_id", containerID),
+		logger.String("dest_path", destPath),
+		logger.String("filename", filename),
+		logger.Int("size", len(content)),
 	)
 
 	if err := p.CopyToContainer(ctx, containerID, destPath, filename, content); err != nil {
@@ -189,9 +189,9 @@ func (p *Provisioner) UploadFile(ctx context.Context, containerID, destPath, fil
 	}
 
 	p.log.DebugContext(ctx, "file uploaded successfully",
-		slog.String("container_id", containerID),
-		slog.String("dest_path", destPath),
-		slog.String("filename", filename),
+		logger.String("container_id", containerID),
+		logger.String("dest_path", destPath),
+		logger.String("filename", filename),
 	)
 	return nil
 }

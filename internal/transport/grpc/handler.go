@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"sync"
 	"time"
 
 	pb "github.com/ellipse/kernel-lab/api/proto"
 	"github.com/ellipse/kernel-lab/internal/domain"
 	"github.com/ellipse/kernel-lab/internal/infra/docker"
+	"github.com/ellipse/kernel-lab/internal/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,10 +25,10 @@ type LabHandler struct {
 	containerCreationTTL sync.Map
 	containerDeadlines   sync.Map
 	containerTTL         time.Duration
-	log                  *slog.Logger
+	log                  logger.Logger
 }
 
-func NewLabHandler(p *docker.Provisioner, r domain.LabRegistry, ttl time.Duration, log *slog.Logger) *LabHandler {
+func NewLabHandler(p *docker.Provisioner, r domain.LabRegistry, ttl time.Duration, log logger.Logger) *LabHandler {
 	return &LabHandler{provisioner: p, registry: r, containerTTL: ttl, log: log}
 }
 
@@ -49,9 +49,9 @@ func (h *LabHandler) RegisterLab(
 		return nil, status.Errorf(codes.InvalidArgument, "register lab: %v", err)
 	}
 	h.log.Info("lab registered",
-		slog.String("lab_id", req.LabId),
-		slog.String("image", req.Image),
-		slog.Int64("duration_seconds", req.DurationSeconds),
+		logger.String("lab_id", req.LabId),
+		logger.String("image", req.Image),
+		logger.Int64("duration_seconds", req.DurationSeconds),
 	)
 	return &pb.RegisterLabResponse{Success: true, LabId: req.LabId}, nil
 }
@@ -60,7 +60,7 @@ func (h *LabHandler) StartLab(
 	ctx context.Context,
 	req *pb.LabRequest,
 ) (*pb.LabResponse, error) {
-	h.log.InfoContext(ctx, "StartLab requested", slog.String("lab_id", req.LabId))
+	h.log.InfoContext(ctx, "StartLab requested", logger.String("lab_id", req.LabId))
 	lab, err := h.registry.Get(req.LabId)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "%v", err)
@@ -70,8 +70,8 @@ func (h *LabHandler) StartLab(
 	id, err := h.provisioner.Spawn(ctx, lab)
 	if err != nil {
 		h.log.ErrorContext(ctx, "spawn failed",
-			slog.String("lab_id", req.LabId),
-			slog.Any("error", err),
+			logger.String("lab_id", req.LabId),
+			logger.Any("error", err),
 		)
 		return nil, status.Errorf(codes.Internal, "spawn container: %v", err)
 	}
@@ -91,10 +91,10 @@ func (h *LabHandler) StartLab(
 	go h.scheduleCleanup(ttlCtx, id, ttl)
 
 	h.log.InfoContext(ctx, "lab started",
-		slog.String("lab_id", req.LabId),
-		slog.String("container_id", id),
-		slog.Duration("took", time.Since(start)),
-		slog.Duration("ttl", ttl),
+		logger.String("lab_id", req.LabId),
+		logger.String("container_id", id),
+		logger.Any("took", time.Since(start)),
+		logger.Any("ttl", ttl),
 	)
 
 	return &pb.LabResponse{
@@ -107,7 +107,7 @@ func (h *LabHandler) StopLab(
 	ctx context.Context,
 	req *pb.StopRequest,
 ) (*pb.StopResponse, error) {
-	h.log.InfoContext(ctx, "StopLab requested", slog.String("container_id", req.ContainerId))
+	h.log.InfoContext(ctx, "StopLab requested", logger.String("container_id", req.ContainerId))
 	if v, ok := h.ttlCancels.LoadAndDelete(req.ContainerId); ok {
 		v.(context.CancelFunc)()
 	}
@@ -124,12 +124,12 @@ func (h *LabHandler) StopLab(
 func (h *LabHandler) scheduleCleanup(ctx context.Context, containerID string, ttl time.Duration) {
 	select {
 	case <-time.After(ttl):
-		h.log.Info("TTL expired, stopping container", slog.String("container_id", containerID))
+		h.log.Info("TTL expired, stopping container", logger.String("container_id", containerID))
 		_ = h.provisioner.Stop(context.Background(), containerID)
 		h.containerLabs.Delete(containerID)
 		h.ttlCancels.Delete(containerID)
 	case <-ctx.Done():
-		h.log.Debug("cleanup cancelled", slog.String("container_id", containerID))
+		h.log.Debug("cleanup cancelled", logger.String("container_id", containerID))
 	}
 }
 
@@ -145,7 +145,7 @@ func (h *LabHandler) TerminalStream(
 		return status.Error(codes.InvalidArgument, "container_id must be set in the first message")
 	}
 
-	h.log.InfoContext(stream.Context(), "terminal stream opened", slog.String("container_id", containerID))
+	h.log.InfoContext(stream.Context(), "terminal stream opened", logger.String("container_id", containerID))
 
 	stdin, stdout, execID, cleanup, err := h.provisioner.Attach(stream.Context(), containerID)
 	if err != nil {
@@ -156,8 +156,8 @@ func (h *LabHandler) TerminalStream(
 	if first.Cols > 0 && first.Rows > 0 {
 		if resizeErr := h.provisioner.ResizeTTY(stream.Context(), execID, uint(first.Cols), uint(first.Rows)); resizeErr != nil {
 			h.log.WarnContext(stream.Context(), "initial resize failed",
-				slog.String("container_id", containerID),
-				slog.Any("error", resizeErr),
+				logger.String("container_id", containerID),
+				logger.Any("error", resizeErr),
 			)
 		}
 	}
@@ -202,8 +202,8 @@ func (h *LabHandler) TerminalStream(
 			if recvErr != nil {
 				if recvErr != io.EOF {
 					h.log.WarnContext(ctx, "terminal stream recv error",
-						slog.String("container_id", containerID),
-						slog.Any("error", recvErr),
+						logger.String("container_id", containerID),
+						logger.Any("error", recvErr),
 					)
 				}
 				return
@@ -212,8 +212,8 @@ func (h *LabHandler) TerminalStream(
 			if msg.Cols > 0 && msg.Rows > 0 {
 				if resizeErr := h.provisioner.ResizeTTY(ctx, execID, uint(msg.Cols), uint(msg.Rows)); resizeErr != nil {
 					h.log.WarnContext(ctx, "resize failed",
-						slog.String("container_id", containerID),
-						slog.Any("error", resizeErr),
+						logger.String("container_id", containerID),
+						logger.Any("error", resizeErr),
 					)
 				}
 			}
@@ -221,8 +221,8 @@ func (h *LabHandler) TerminalStream(
 			if len(msg.Data) > 0 {
 				if _, writeErr := stdin.Write(msg.Data); writeErr != nil {
 					h.log.WarnContext(ctx, "terminal stdin write error",
-						slog.String("container_id", containerID),
-						slog.Any("error", writeErr),
+						logger.String("container_id", containerID),
+						logger.Any("error", writeErr),
 					)
 					return
 				}
@@ -233,12 +233,12 @@ func (h *LabHandler) TerminalStream(
 	select {
 	case err := <-downErr:
 		h.log.InfoContext(stream.Context(), "terminal stream closed (downstream)",
-			slog.String("container_id", containerID),
+			logger.String("container_id", containerID),
 		)
 		return err
 	case <-ctx.Done():
 		h.log.InfoContext(stream.Context(), "terminal stream closed (client disconnected)",
-			slog.String("container_id", containerID),
+			logger.String("container_id", containerID),
 		)
 		return nil
 	}
@@ -248,7 +248,7 @@ func (h *LabHandler) ExecCheck(
 	ctx context.Context,
 	req *pb.ExecRequest,
 ) (*pb.ExecResponse, error) {
-	h.log.InfoContext(ctx, "ExecCheck requested", slog.String("container_id", req.ContainerId))
+	h.log.InfoContext(ctx, "ExecCheck requested", logger.String("container_id", req.ContainerId))
 	rawLab, ok := h.containerLabs.Load(req.ContainerId)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "no lab found for container %q", req.ContainerId)
@@ -286,8 +286,8 @@ func (h *LabHandler) ExecCheck(
 	}
 
 	h.log.InfoContext(ctx, "ExecCheck done",
-		slog.String("container_id", req.ContainerId),
-		slog.Int("exit_code", int(result.ExitCode)),
+		logger.String("container_id", req.ContainerId),
+		logger.Int("exit_code", int(result.ExitCode)),
 	)
 
 	return &pb.ExecResponse{
@@ -302,9 +302,9 @@ func (h *LabHandler) UploadFile(
 	req *pb.UploadFileRequest,
 ) (*pb.UploadFileResponse, error) {
 	h.log.InfoContext(ctx, "UploadFile requested",
-		slog.String("container_id", req.ContainerId),
-		slog.String("dest_path", req.DestPath),
-		slog.String("filename", req.Filename),
+		logger.String("container_id", req.ContainerId),
+		logger.String("dest_path", req.DestPath),
+		logger.String("filename", req.Filename),
 	)
 
 	if _, ok := h.containerLabs.Load(req.ContainerId); !ok {
@@ -316,8 +316,8 @@ func (h *LabHandler) UploadFile(
 
 	if err := h.provisioner.UploadFile(ctx, req.ContainerId, req.DestPath, req.Filename, req.Content); err != nil {
 		h.log.ErrorContext(ctx, "upload file failed",
-			slog.String("container_id", req.ContainerId),
-			slog.Any("error", err),
+			logger.String("container_id", req.ContainerId),
+			logger.Any("error", err),
 		)
 		return &pb.UploadFileResponse{
 			Success:  false,
@@ -326,8 +326,8 @@ func (h *LabHandler) UploadFile(
 	}
 
 	h.log.InfoContext(ctx, "file uploaded successfully",
-		slog.String("container_id", req.ContainerId),
-		slog.String("filename", req.Filename),
+		logger.String("container_id", req.ContainerId),
+		logger.String("filename", req.Filename),
 	)
 	return &pb.UploadFileResponse{
 		Success:  true,
@@ -343,8 +343,8 @@ func (h *LabHandler) ExtendLab(
 	extendSecs := req.ExtendSeconds
 
 	h.log.InfoContext(ctx, "ExtendLab requested",
-		slog.String("container_id", containerID),
-		slog.Int64("extend_seconds", extendSecs),
+		logger.String("container_id", containerID),
+		logger.Int64("extend_seconds", extendSecs),
 	)
 
 	if _, ok := h.containerLabs.Load(containerID); !ok {
@@ -391,10 +391,10 @@ func (h *LabHandler) ExtendLab(
 	go h.scheduleCleanup(ttlCtx, containerID, remainingTime)
 
 	h.log.InfoContext(ctx, "lab extended",
-		slog.String("container_id", containerID),
-		slog.Time("old_deadline", oldDeadline),
-		slog.Time("new_deadline", newDeadline),
-		slog.Int64("remaining_seconds", int64(remainingTime.Seconds())),
+		logger.String("container_id", containerID),
+		logger.Any("old_deadline", oldDeadline),
+		logger.Any("new_deadline", newDeadline),
+		logger.Int64("remaining_seconds", int64(remainingTime.Seconds())),
 	)
 
 	return &pb.ExtendLabResponse{

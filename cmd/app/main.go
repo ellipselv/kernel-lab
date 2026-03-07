@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 	pb "github.com/ellipse/kernel-lab/api/proto"
 	"github.com/ellipse/kernel-lab/internal/domain"
 	"github.com/ellipse/kernel-lab/internal/infra/docker"
+	"github.com/ellipse/kernel-lab/internal/logger"
 	labGrpc "github.com/ellipse/kernel-lab/internal/transport/grpc"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
@@ -21,14 +21,11 @@ func main() {
 	const grpcAddr = ":50051"
 	const httpAddr = ":8080"
 
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-	slog.SetDefault(log)
+	log := logger.NewColorLogger(logger.LevelDebug)
 
 	p, err := docker.NewProvisioner(log)
 	if err != nil {
-		log.Error("failed to connect to docker", slog.Any("error", err))
+		log.Error("failed to connect to docker", logger.Err(err))
 		os.Exit(1)
 	}
 	defer p.Close()
@@ -37,7 +34,7 @@ func main() {
 
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		log.Error("failed to listen", slog.Any("error", err))
+		log.Error("failed to listen", logger.Err(err))
 		os.Exit(1)
 	}
 
@@ -48,7 +45,7 @@ func main() {
 	if err := pb.RegisterLabServiceHandlerFromEndpoint(context.Background(), gatewayMux, grpcAddr, []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}); err != nil {
-		log.Error("failed to register gateway handler", slog.Any("error", err))
+		log.Error("failed to register gateway handler", logger.Err(err))
 		os.Exit(1)
 	}
 
@@ -60,17 +57,17 @@ func main() {
 	errCh := make(chan error, 2)
 
 	go func() {
-		log.Info("gRPC server listening", slog.String("addr", grpcAddr))
+		log.Info("gRPC server listening", logger.String("addr", grpcAddr))
 		errCh <- s.Serve(lis)
 	}()
 
 	go func() {
-		log.Info("HTTP gateway listening", slog.String("addr", httpAddr))
+		log.Info("HTTP gateway listening", logger.String("addr", httpAddr))
 		errCh <- httpSrv.ListenAndServe()
 	}()
 
 	if err := <-errCh; err != nil && err != http.ErrServerClosed {
-		log.Error("server stopped", slog.Any("error", err))
+		log.Error("server stopped", logger.Err(err))
 		os.Exit(1)
 	}
 }

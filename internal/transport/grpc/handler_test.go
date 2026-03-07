@@ -2,9 +2,7 @@ package grpc_test
 
 import (
 	"context"
-	"log/slog"
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +10,7 @@ import (
 	pb "github.com/ellipse/kernel-lab/api/proto"
 	"github.com/ellipse/kernel-lab/internal/domain"
 	"github.com/ellipse/kernel-lab/internal/infra/docker"
+	"github.com/ellipse/kernel-lab/internal/logger"
 	labGrpc "github.com/ellipse/kernel-lab/internal/transport/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,7 +22,7 @@ const bufSize = 1 << 20 // 1 MiB
 func newTestServer(t *testing.T) (pb.LabServiceClient, func()) {
 	t.Helper()
 
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	log := logger.NewColorLogger(logger.LevelDebug)
 
 	p, err := docker.NewProvisioner(log)
 	if err != nil {
